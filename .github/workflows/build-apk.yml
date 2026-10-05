@@ -1,0 +1,226 @@
+name: Build APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Assemble Android project from index.html
+        run: |
+          set -e
+          A=android/app/src/main
+          mkdir -p $A/java/uk/thesystem/app $A/assets $A/res/mipmap-xxxhdpi
+          cp index.html $A/assets/index.html
+          sed -i '/serviceWorker/d' $A/assets/index.html
+          python3 - <<'PY'
+          import re,base64
+          s=open('index.html').read()
+          m=re.search(r"const DEFAULT_AVATAR='data:image/jpeg;base64,([^']+)'",s)
+          open('android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.jpg','wb').write(base64.b64decode(m.group(1)))
+          PY
+          cat > android/settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name = "TheSystem"
+          include ':app'
+          EOF
+          cat > android/build.gradle <<'EOF'
+          plugins { id 'com.android.application' version '8.5.2' apply false }
+          EOF
+          cat > android/gradle.properties <<'EOF'
+          android.useAndroidX=true
+          org.gradle.jvmargs=-Xmx3g
+          EOF
+          cat > android/app/build.gradle <<'EOF'
+          plugins { id 'com.android.application' }
+          android {
+              namespace 'uk.thesystem.app'
+              compileSdk 34
+              defaultConfig {
+                  applicationId 'uk.thesystem.app'
+                  minSdk 29
+                  targetSdk 34
+                  versionCode ${{ github.run_number }}
+                  versionName '1.${{ github.run_number }}'
+              }
+              compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+          }
+          dependencies { implementation 'androidx.webkit:webkit:1.11.0' }
+          EOF
+          cat > $A/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <application android:label="The System" android:icon="@mipmap/ic_launcher" android:allowBackup="true" android:supportsRtl="true" android:theme="@android:style/Theme.Material.NoActionBar">
+                  <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden|uiMode" android:windowSoftInputMode="adjustResize">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+          cat > $A/java/uk/thesystem/app/MainActivity.java <<'EOF'
+          package uk.thesystem.app;
+
+          import android.app.Activity;
+          import android.content.ContentValues;
+          import android.content.Intent;
+          import android.net.Uri;
+          import android.os.Bundle;
+          import android.os.Message;
+          import android.provider.MediaStore;
+          import android.webkit.JavascriptInterface;
+          import android.webkit.ValueCallback;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebResourceRequest;
+          import android.webkit.WebResourceResponse;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import android.widget.Toast;
+          import androidx.annotation.NonNull;
+          import androidx.webkit.WebViewAssetLoader;
+          import androidx.webkit.WebViewClientCompat;
+          import java.io.OutputStream;
+
+          public class MainActivity extends Activity {
+              private static final String HOME = "https://appassets.androidplatform.net/assets/index.html";
+              private static final int FILE_REQ = 1;
+              private WebView web;
+              private ValueCallback<Uri[]> fileCb;
+
+              @Override
+              protected void onCreate(Bundle saved) {
+                  super.onCreate(saved);
+                  web = new WebView(this);
+                  web.setBackgroundColor(0xFF070B18);
+                  setContentView(web);
+                  WebSettings s = web.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  s.setSupportMultipleWindows(true);
+                  s.setJavaScriptCanOpenWindowsAutomatically(true);
+
+                  final WebViewAssetLoader loader = new WebViewAssetLoader.Builder()
+                          .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+                          .build();
+
+                  web.setWebViewClient(new WebViewClientCompat() {
+                      @Override
+                      public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) {
+                          return loader.shouldInterceptRequest(r.getUrl());
+                      }
+                      @Override
+                      public boolean shouldOverrideUrlLoading(@NonNull WebView v, @NonNull WebResourceRequest r) {
+                          Uri u = r.getUrl();
+                          if ("appassets.androidplatform.net".equals(u.getHost())) return false;
+                          openExternal(u);
+                          return true;
+                      }
+                  });
+
+                  web.setWebChromeClient(new WebChromeClient() {
+                      @Override
+                      public boolean onCreateWindow(WebView v, boolean isDialog, boolean isUserGesture, Message msg) {
+                          WebView tmp = new WebView(MainActivity.this);
+                          tmp.setWebViewClient(new WebViewClient() {
+                              @Override
+                              public boolean shouldOverrideUrlLoading(WebView w, WebResourceRequest r) {
+                                  openExternal(r.getUrl());
+                                  return true;
+                              }
+                          });
+                          ((WebView.WebViewTransport) msg.obj).setWebView(tmp);
+                          msg.sendToTarget();
+                          return true;
+                      }
+                      @Override
+                      public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams params) {
+                          if (fileCb != null) fileCb.onReceiveValue(null);
+                          fileCb = cb;
+                          try {
+                              startActivityForResult(params.createIntent(), FILE_REQ);
+                          } catch (Exception e) {
+                              fileCb = null;
+                              return false;
+                          }
+                          return true;
+                      }
+                  });
+
+                  web.addJavascriptInterface(new Bridge(), "Android");
+                  if (saved != null) web.restoreState(saved); else web.loadUrl(HOME);
+              }
+
+              private void openExternal(Uri u) {
+                  try { startActivity(new Intent(Intent.ACTION_VIEW, u)); }
+                  catch (Exception e) { Toast.makeText(this, "No app can open this link", Toast.LENGTH_SHORT).show(); }
+              }
+
+              class Bridge {
+                  @JavascriptInterface
+                  public void saveFile(String name, String content) {
+                      try {
+                          ContentValues cv = new ContentValues();
+                          cv.put(MediaStore.Downloads.DISPLAY_NAME, name);
+                          cv.put(MediaStore.Downloads.MIME_TYPE, "application/json");
+                          Uri u = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                          OutputStream o = getContentResolver().openOutputStream(u);
+                          o.write(content.getBytes("UTF-8"));
+                          o.close();
+                          runOnUiThread(() -> Toast.makeText(MainActivity.this, "Saved to Downloads/" + name, Toast.LENGTH_LONG).show());
+                      } catch (Exception e) {
+                          runOnUiThread(() -> Toast.makeText(MainActivity.this, "Could not save: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                      }
+                  }
+              }
+
+              @Override
+              protected void onActivityResult(int req, int res, Intent data) {
+                  super.onActivityResult(req, res, data);
+                  if (req == FILE_REQ && fileCb != null) {
+                      fileCb.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(res, data));
+                      fileCb = null;
+                  }
+              }
+
+              @Override
+              public void onBackPressed() {
+                  if (web.canGoBack()) web.goBack(); else super.onBackPressed();
+              }
+
+              @Override
+              protected void onSaveInstanceState(Bundle out) {
+                  super.onSaveInstanceState(out);
+                  web.saveState(out);
+              }
+          }
+          EOF
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          gradle wrapper --gradle-version 8.9 --no-daemon
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk ../the-system.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: the-system-apk
+          path: the-system.apk
+      - name: Publish as release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: The System (latest APK)
+          body: Download the-system.apk below and open it on your phone to install.
+          files: the-system.apk
