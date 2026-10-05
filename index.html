@@ -34,6 +34,14 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--sys);outli
 .win::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
 .win::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
 .win h2{font-size:20px;color:var(--sys);margin-bottom:8px}
+.win.col>h2{cursor:pointer;margin-bottom:0}.win.col>h2::after{content:' ▾';color:var(--muted);font-size:14px}.win.col.open>h2{margin-bottom:8px}.win.col.open>h2::after{content:' ▴'}
+.win.col>*:not(h2){display:none}.win.col.open>*:not(h2){display:block}
+.strip{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.strip div{background:var(--panel2);border:1px solid var(--line);padding:6px 4px;text-align:center}
+.strip b{display:block;font-family:Rajdhani;font-size:22px;font-weight:700;color:var(--sys);line-height:1}
+.strip span{font-size:10px;color:var(--muted)}
+.banner{border:1px solid var(--gold);background:rgba(242,193,78,.08);padding:10px 12px;margin-bottom:14px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.evt{display:flex;gap:10px;padding:5px 0;border-bottom:1px dashed var(--line);font-size:13px}.evt:last-child{border-bottom:0}.evt .d{color:var(--muted);flex:none;width:52px;font-size:11px;padding-top:2px}.evt b{font-weight:600;color:var(--sys)}
 .win h2 small{font-family:Inter;font-size:12px;color:var(--muted);font-weight:500;letter-spacing:0;margin-left:8px}
 /* top status */
 .status{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:14px}
@@ -177,6 +185,7 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
 
   <!-- PLAYER -->
   <section class="view on" id="v-player">
+    <div id="banner"></div>
     <div class="statwin" id="statwin"></div>
     <div class="win" style="margin-top:18px">
       <h2>Rise rating</h2>
@@ -193,6 +202,7 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
 
   <!-- QUESTS -->
   <section class="view" id="v-quests">
+    <div class="strip" id="strip"></div>
     <div class="win">
       <h2>Daily quests <small id="qSummary"></small></h2>
       <div id="taskList"></div>
@@ -200,13 +210,14 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
         <span class="muted" id="goodDay"></span>
         <button class="btn sm" onclick="openTaskModal()">Add quest</button>
       </div>
+      <div class="row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)"><span class="muted" id="restInfo"></span><button class="btn sm" id="restBtn" onclick="takeRestDay()">Take a rest day</button></div>
     </div>
     <div class="win">
       <h2>Daily trackers <small>tap as you go</small></h2>
       <div id="trackers"></div>
     </div>
-    <div class="win tree">
-      <h2>Skill tree <small>one-off actions · Do now for XP today, + Daily to add to your list</small></h2>
+    <div class="win tree col" id="treeWin">
+      <h2 onclick="this.parentElement.classList.toggle('open')">Skill tree <small>one-off actions · Do now for XP today, + Daily to add to your list</small></h2>
       <div id="skillTree"></div>
       <button class="btn sm" style="margin-top:8px" onclick="openSkillItemModal()">Add your own action</button>
     </div>
@@ -215,8 +226,8 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
       <div id="questList"></div>
       <button class="btn sm" style="margin-top:10px" onclick="openQuestModal()">New quest</button>
     </div>
-    <div class="win">
-      <h2>Projects <small>ongoing · XP per session</small></h2>
+    <div class="win col" id="projWin">
+      <h2 onclick="this.parentElement.classList.toggle('open')">Projects <small>ongoing · XP per session</small></h2>
       <div id="projectList"></div>
       <button class="btn sm" style="margin-top:10px" onclick="openProjectModal()">New project</button>
     </div>
@@ -261,6 +272,10 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
       <div id="histGrid"></div>
     </div>
     <div class="win">
+      <h2>System log <small>what happened and when</small></h2>
+      <div id="eventLog"></div>
+    </div>
+    <div class="win">
       <h2>Achievements <small id="achCount"></small></h2>
       <div class="ach" id="achGrid"></div>
     </div>
@@ -295,6 +310,8 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
       <h2>Settings</h2>
       <label>Hunter name</label><input id="nameIn" onchange="S.name=this.value;save();render()"><label>Character icon by form <span class="muted">(the status window switches automatically as you level)</span></label>
       <div id="tierSlots"></div>
+      <label>Evening reminder <span class="muted">(installed app only)</span></label>
+      <div class="row" style="gap:8px"><select id="remOn" onchange="S.reminder.on=this.value==='1';save();syncReminder()"><option value="1">On</option><option value="0">Off</option></select><input type="time" id="remTime" onchange="S.reminder.time=this.value;save();syncReminder()"></div>
       <label>Quests needed each day to avoid the HP penalty</label><input type="number" id="thrIn" min="1" onchange="S.threshold=Math.max(1,Number(this.value)||6);save();render()">
       <label>PIN lock <span class="muted">(hides the app from a glance; your phone lock is the real security)</span></label>
       <div class="row" style="gap:8px"><input type="password" id="pinIn" inputmode="numeric" maxlength="6" placeholder="4–6 digits, blank to remove"><button class="btn sm" onclick="setPin()">Save PIN</button></div>
@@ -423,6 +440,32 @@ const BOOKS = [
    pts:['Keep the cue and reward, change the routine, and a habit can be rewired.','Keystone habits (exercise, for most people) trigger improvements elsewhere.','Belief that change is possible is what makes habits stick under stress.']},
   {t:'Discipline Equals Freedom', a:'Jocko Willink', why:'Short, blunt reminders that structure is what gives you room to do what you want.',
    pts:['Discipline is the root of every good quality; start with the alarm clock.','Motivation is unreliable; decide in advance and simply execute.','Default to aggressive action when unsure.']},
+  {t:'Thinking, Fast and Slow', a:'Daniel Kahneman', why:'The map of how your mind cuts corners — and when those shortcuts cost you.',pts:['Two systems: fast intuition and slow deliberate thought; know which one is answering.','You are overconfident by default; seek the base rate before the story.','Losses hurt roughly twice as much as gains please — plan for that bias.']},
+  {t:'Man\'s Search for Meaning', a:'Viktor Frankl', why:'Written by a concentration-camp survivor; the strongest case that meaning, not comfort, keeps people going.',pts:['Between stimulus and response there is a space, and in it is your freedom.','Suffering becomes bearable when it has a purpose.','Don\'t aim at success directly; it follows from devotion to something larger.']},
+  {t:'The Psychology of Money', a:'Morgan Housel', why:'Short essays on why behaviour, not spreadsheets, decides financial outcomes.',pts:['Wealth is what you don\'t see — the money not spent.','Reasonable beats rational; a plan you can stick to wins.','Compounding needs time more than brilliance; stay in the game.']},
+  {t:'Grit', a:'Angela Duckworth', why:'The research behind why sustained passion and persistence beat raw talent.',pts:['Effort counts twice: it builds skill and turns skill into achievement.','Interest is developed, not discovered — commit before you feel certain.','Have a top-level goal that the small ones serve.']},
+  {t:'The Four Agreements', a:'Don Miguel Ruiz', why:'Four plain rules that remove most self-inflicted mental noise.',pts:['Be impeccable with your word.','Don\'t take anything personally.','Don\'t make assumptions, and always do your best.']},
+  {t:'Extreme Ownership', a:'Jocko Willink & Leif Babin', why:'Navy SEAL leadership distilled to one habit: own everything in your world.',pts:['No bad teams, only bad leaders — and you lead yourself first.','Prioritise and execute: one problem at a time when everything is on fire.','Keep plans simple enough that they survive contact.']},
+  {t:'The War of Art', a:'Steven Pressfield', why:'Names the enemy — Resistance — that stops you starting the work that matters.',pts:['Resistance is strongest just before the work that matters most.','Turn pro: show up daily whether inspired or not.','Fear is a compass pointing at what you should do.']},
+  {t:'Steal Like an Artist', a:'Austin Kleon', why:'A small, honest book on creativity: nothing is original, so build on what you love.',pts:['Collect good ideas; your style is the sum of your influences.','Do the work you want to be hired for before anyone hires you.','Side projects and hobbies feed the main thing.']},
+  {t:'Make Time', a:'Jake Knapp & John Zeratsky', why:'A daily framework for one highlight, built by the people who designed the distractions.',pts:['Pick one highlight each day and protect it.','Make distractions hard to reach: remove apps, log out, add friction.','Energise the body — sleep, movement, real food — to fuel the mind.']},
+  {t:'Indistractable', a:'Nir Eyal', why:'Why distraction starts inside you, and how to plan traction instead.',pts:['Distraction is an escape from discomfort; master the internal trigger first.','Timebox your day — if it isn\'t scheduled, it won\'t happen.','Make pacts: effort, price, and identity commitments.']},
+  {t:'The One Thing', a:'Gary Keller & Jay Papasan', why:'A single question that cuts a to-do list down to what matters.',pts:['What\'s the one thing that makes everything else easier or unnecessary?','Multitasking is a lie; sequence instead.','Time-block four hours for the one thing before anything else.']},
+  {t:'Tiny Habits', a:'BJ Fogg', why:'The behaviour-science method behind starting absurdly small so you never skip.',pts:['Behaviour = motivation × ability × prompt; shrink the behaviour until ability is trivial.','Anchor the new habit to an existing routine.','Celebrate immediately — the emotion wires the habit.']},
+  {t:'Why We Sleep', a:'Matthew Walker', why:'The case that sleep is the foundation every other stat is built on.',pts:['Short sleep wrecks memory, mood, immunity and judgement within days.','Consistency of bedtime matters more than catching up at weekends.','Caffeine has a six-hour half-life; the afternoon coffee is still there at midnight.']},
+  {t:'Breath', a:'James Nestor', why:'How the way you breathe shapes energy, sleep and calm — and how to fix it.',pts:['Breathe through the nose, by default, including during exercise.','Slower is better: roughly 5.5 breaths a minute is a resting sweet spot.','Exhale longer than you inhale to calm the nervous system.']},
+  {t:'Spark', a:'John Ratey', why:'The neuroscience of why exercise is the single best thing you can do for your brain.',pts:['Aerobic exercise grows new brain cells and sharpens attention within weeks.','Movement is a first-line treatment for stress and low mood.','Train hard a few times a week, move daily.']},
+  {t:'Never Split the Difference', a:'Chris Voss', why:'FBI hostage-negotiation tactics that work on landlords, bosses and yourself.',pts:['Tactical empathy: label the other side\'s feelings before you argue.','Calibrated questions (how, what) make them solve your problem.','"No" is the start of a negotiation, not the end.']},
+  {t:'The Daily Stoic', a:'Ryan Holiday', why:'A page a day of Stoic practice; the easiest way to keep the philosophy present.',pts:['Control what you can, release what you can\'t — every single morning.','Treat obstacles as training.','Memento mori: time is the only non-renewable resource.']},
+  {t:'Flow', a:'Mihaly Csikszentmihalyi', why:'The original research on the state where work becomes effortless and time disappears.',pts:['Flow needs a clear goal, immediate feedback and a challenge just above your skill.','Boredom and anxiety are signs the challenge is mis-set, not that you are broken.','A life built around flow activities is a life well lived.']},
+  {t:'Peak', a:'Anders Ericsson', why:'The science of expertise: how deliberate practice, not hours, makes masters.',pts:['Practice at the edge of ability, with feedback, on specific weaknesses.','Naive repetition plateaus; design practice that forces adaptation.','Mental representations are what separates experts — build them on purpose.']},
+  {t:'Range', a:'David Epstein', why:'The counter-case: generalists who sample widely often beat early specialists.',pts:['Breadth early makes later specialisation sharper.','Match quality — finding the right fit — matters more than a head start.','Analogies across fields are where new ideas come from.']},
+  {t:'So Good They Can\'t Ignore You', a:'Cal Newport', why:'Why "follow your passion" is bad advice and skill-building is the real route to work you love.',pts:['Build rare and valuable skills first; passion follows mastery.','Trade career capital for control, not the other way round.','Have a mission once you\'re at the cutting edge, not before.']},
+  {t:'Digital Minimalism', a:'Cal Newport', why:'A 30-day declutter for the phone that steals your evenings.',pts:['Optional technologies get removed for 30 days, then readmitted only with a purpose.','Solitude — time with your own thoughts — is a requirement, not a luxury.','Replace low-quality leisure with demanding, hands-on hobbies.']},
+  {t:'The Compound Effect', a:'Darren Hardy', why:'Small choices, repeated, decide everything; this is the maths of that idea.',pts:['Track one behaviour for a week and you will change it.','Momentum takes a long time to build and seconds to lose.','Your inputs — people, media, environment — are choices too.']},
+  {t:'Mastery', a:'Robert Greene', why:'How the greats actually got great: apprenticeship, then creative independence.',pts:['Find your life\'s task where your interests and the world\'s needs meet.','Spend years as an apprentice; absorb before you innovate.','Mentors shortcut the path; seek them deliberately.']},
+  {t:'The Art of Learning', a:'Josh Waitzkin', why:'A chess prodigy turned martial-arts champion on how to learn anything deeply.',pts:['Make smaller circles: master a tiny piece completely, then expand.','Invest in loss — losing with attention teaches more than winning.','Build routines that trigger your best state on demand.']},
+  {t:'Atomic Attention — Deep Questions', a:'Cal Newport (podcast companion)', why:'Not a book but a habit: pick one question a week and read until you can answer it.',pts:['Choose a question that matters to your work or life.','Read two sources with opposing views.','Write a one-paragraph answer before moving on.']},
 ];
 
 /* ========= STATE ========= */
@@ -440,9 +483,9 @@ function fresh(){
 }
 function load(){ try{const r=localStorage.getItem(KEY); S=r?JSON.parse(r):fresh();}catch(e){S=fresh();} if(!S.day1){S.day1=snapshot();} S.sets=S.sets||[]; S.customEx=S.customEx||[]; S.title=S.title||'Newly awakened'; if(!S.avatar) S.avatar=DEFAULT_AVATAR; S.avatars=S.avatars||{};
   if(!S.scaleMigrated){ S.scaleMigrated=true; for(const t of S.tasks){ if(t.link&&!t.link.scale){ if(t.link.ex==='pushups'){t.link.scale={stat:'Strength',base:30,per:5,cap:200}; if(/^\d+ push/i.test(t.name)) t.name='Push-ups';} else if(t.link.ex==='plank'){t.link.scale={stat:'Fitness',base:30,per:5,cap:180}; if(/minute plank/i.test(t.name)) t.name='Plank';} else if(t.link.ex==='run'){t.link.scale={stat:'Fitness',base:2,per:0.25,cap:10}; if(/run \d/i.test(t.name)) t.name='Run';} } } }
-  S.threshold=S.threshold||6; S.habits=S.habits||{}; S.goalsDone=S.goalsDone||{}; S.manualGoals=S.manualGoals||[{id:'g1',name:'Call family',xp:150,primary:'Positivity',target:1,period:'week'},{id:'g2',name:'Deep clean the room',xp:200,primary:'Self-Discipline',target:1,period:'week'},{id:'g3',name:'Review finances',xp:400,primary:'Logic',target:1,period:'month'}]; S.manualCounts=S.manualCounts||{}; S.customSkill=S.customSkill||[]; S.backups=S.backups||[]; if(!S.mealsAdded){ S.mealsAdded=true; for(const n of ['Healthy lunch','Healthy dinner']) if(!S.tasks.some(t=>t.name===n)) S.tasks.push({id:'t'+n.replace(/\s/g,''),name:n,diff:'easy',primary:'Nutrition',secondary:['Longevity','Self-Discipline'],essential:false,streak:0,best:0,last:null}); } if(S.avatars.hunter&&!S.avatars.f5){S.avatars.f5=S.avatars.hunter;} if(!S.avatars.f5) S.avatars.f5=DEFAULT_AVATAR; for(const k in FORM_IMAGES) if(!S.avatars[k]||!S.customAvatars||!S.customAvatars[k]) S.avatars[k]=FORM_IMAGES[k];
+  S.threshold=S.threshold||6; S.habits=S.habits||{}; S.goalsDone=S.goalsDone||{}; S.manualGoals=S.manualGoals||[{id:'g1',name:'Call family',xp:150,primary:'Positivity',target:1,period:'week'},{id:'g2',name:'Deep clean the room',xp:200,primary:'Self-Discipline',target:1,period:'week'},{id:'g3',name:'Review finances',xp:400,primary:'Logic',target:1,period:'month'}]; S.manualCounts=S.manualCounts||{}; S.customSkill=S.customSkill||[]; S.backups=S.backups||[]; S.events=S.events||[]; S.restDays=S.restDays||{}; S.booksRead=S.booksRead||{}; S.reminder=S.reminder||{on:true,time:'21:00'}; if(!S.mealsAdded){ S.mealsAdded=true; for(const n of ['Healthy lunch','Healthy dinner']) if(!S.tasks.some(t=>t.name===n)) S.tasks.push({id:'t'+n.replace(/\s/g,''),name:n,diff:'easy',primary:'Nutrition',secondary:['Longevity','Self-Discipline'],essential:false,streak:0,best:0,last:null}); } if(S.avatars.hunter&&!S.avatars.f5){S.avatars.f5=S.avatars.hunter;} if(!S.avatars.f5) S.avatars.f5=DEFAULT_AVATAR; for(const k in FORM_IMAGES) if(!S.avatars[k]||!S.customAvatars||!S.customAvatars[k]) S.avatars[k]=FORM_IMAGES[k];
   for(const t of S.tasks){ if(!t.link){ if(/push-?ups?/i.test(t.name)) t.link={ex:'pushups',target:parseInt(t.name)||100}; else if(/plank/i.test(t.name)) t.link={ex:'plank',target:60}; else if(/run/i.test(t.name)&&/km/i.test(t.name)) t.link={ex:'run',target:parseFloat(t.name.match(/[\d.]+/)?.[0])||5}; } } }
-function save(){ try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){} }
+function save(){ try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){} try{ if(S&&S.reminder) syncReminder(); }catch(e){} }
 function today(d=new Date()){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function addDays(s,n){ const d=new Date(s+'T12:00:00'); d.setDate(d.getDate()+n); return today(d); }
 function dayIndex(s=S){ const a=new Date(s.start+'T12:00:00'), b=new Date(today()+'T12:00:00'); return Math.floor((b-a)/864e5)+1; }
@@ -466,12 +509,16 @@ function snapshot(){ const o={}; for(const k of Object.keys(SKILLS)) o[k]=skillL
 function fmt(n){ return Math.round(n).toLocaleString('en-GB'); }
 
 /* ========= DAY ROLLOVER ========= */
+function restUsedThisWeek(){ return Object.keys(S.restDays||{}).some(d=>inWeek(d)); }
+function takeRestDay(){ const d=today(); if(S.restDays[d]) return; if(restUsedThisWeek()){ sys('No rest day left','One per week, resets Monday.'); return; } if(!confirm('Take today as a rest day? No HP penalty and all streaks are kept. One per week.')) return; S.restDays[d]=true; sys('Rest day','Today is protected. Streaks and HP are safe.'); save(); render(); }
+function prevActiveDay(d){ let x=addDays(d,-1); let n=0; while(S.restDays&&S.restDays[x]&&n<14){ x=addDays(x,-1); n++; } return x; }
 function rollover(){
   let d=S.lastProcessed; const t=today(); if(d>=t) return;
   while(d<t){
     const done=S.tasks.filter(x=>x.last===d); const need=Math.min(S.threshold||6,S.tasks.length);
     S.recap[d]=S.recap[d]||0;
     if(done.length===S.tasks.length&&S.tasks.length>0){ S.flawless++; S.hp=Math.min(MAXHP,S.hp+HP_RESTORE); }
+    if(S.restDays&&S.restDays[d]){ S.noLossDays++; d=addDays(d,1); continue; }
     for(const x of S.tasks) if(x.last!==d) x.streak=0;
     if(done.length<need){
       if(S.tokens>0){ S.tokens--; sys('Shield used','A token absorbed the penalty for '+d+' ('+done.length+' of '+need+' quests).'); S.noLossDays++; }
@@ -490,12 +537,13 @@ function toggleTask(id){
     S.log=S.log.filter(e=>!(e.task===id&&e.date===d)); t.last=t.prevLast||null; t.streak=t.prevStreak||0; recomputeRecap(d);
   } else {
     t.prevLast=t.last; t.prevStreak=t.streak;
-    t.streak=(t.last===addDays(d,-1))?t.streak+1:1; t.best=Math.max(t.best,t.streak); t.last=d;
+    t.streak=(t.last===prevActiveDay(d))?t.streak+1:1; t.best=Math.max(t.best,t.streak); t.last=d;
     const base=t.link?0:DIFF[t.diff].xp*streakMult(t.streak)*weakMult(); const before=charLevel(S).lvl, bs=skillLevel(S,SUB_SKILL[t.primary]).lvl;
     if(!t.link){ S.log.push({task:id,date:d,sub:t.primary,xp:Math.round(base)});
     (t.secondary||[]).slice(0,3).forEach(sub=>S.log.push({task:id,date:d,sub,xp:Math.round(base*.25)})); }
     recomputeRecap(d);
     if([10,30,66,100,365].includes(t.streak)){ S.tokens++; S.tokensEarned++; sys('Streak milestone','"'+t.name+'" at '+t.streak+' days. +1 shield token.'); }
+    if(!t.link){ const L=subLevel(S,t.primary); sys('Quest cleared','+'+Math.round(base)+' XP → '+t.primary+' Lv '+L.lvl+' · '+fmt(L.into)+'/'+fmt(L.need)); }
     checkLevels(before,bs,SUB_SKILL[t.primary]);
   }
   save(); checkAch(); render();
@@ -509,7 +557,7 @@ function toggleStep(qid,i){
   const q=S.quests.find(x=>x.id===qid); q.steps[i].d=!q.steps[i].d;
   if(q.steps.every(s=>s.d)&&q.status!=='done'){ q.status='done'; const b=charLevel(S).lvl, bs=skillLevel(S,q.skill).lvl;
     S.log.push({task:qid,date:today(),sub:q.primary,xp:Math.round(q.bonus*weakMult())}); recomputeRecap(today());
-    sys('Quest cleared','"'+q.name+'" complete. +'+fmt(q.bonus)+' XP bonus.'); checkLevels(b,bs,q.skill); }
+    sys('Quest complete!','"'+q.name+'" complete. +'+fmt(q.bonus)+' XP bonus.'); checkLevels(b,bs,q.skill); }
   save(); checkAch(); render();
 }
 function logSession(pid,h){
@@ -646,9 +694,9 @@ function logSet(){
   const b=charLevel(S).lvl, bs=skillLevel(S,SUB_SKILL[ex.primary]).lvl;
   S.sets.push({id:sid,date:d,ex:ex.id,variant,amt,xp});
   S.log.push({task:sid,date:d,sub:ex.primary,xp}); (ex.secondary||[]).slice(0,3).forEach(sub=>S.log.push({task:sid,date:d,sub,xp:Math.round(xp*.25)}));
-  recomputeRecap(d); sys('Set logged',amt+' '+ex.unit+' · '+variant+' · +'+xp+' XP');
+  recomputeRecap(d); { const L=subLevel(S,ex.primary); sys('Set logged',amt+' '+ex.unit+' · '+variant+' · +'+xp+' XP → '+ex.primary+' Lv '+L.lvl+' · '+fmt(L.into)+'/'+fmt(L.need)); }
   // auto-complete linked daily quests
-  for(const t of S.tasks){ if(t.link&&t.link.ex===ex.id&&t.last!==d&&dayTotal(ex.id)>=targetOf(t)){ t.prevLast=t.last; t.prevStreak=t.streak; t.streak=(t.last===addDays(d,-1))?t.streak+1:1; t.best=Math.max(t.best,t.streak); t.last=d; sys('Quest complete','"'+t.name+'" reached by your logged sets.'); if([10,30,66,100,365].includes(t.streak)){S.tokens++;S.tokensEarned++;} } }
+  for(const t of S.tasks){ if(t.link&&t.link.ex===ex.id&&t.last!==d&&dayTotal(ex.id)>=targetOf(t)){ t.prevLast=t.last; t.prevStreak=t.streak; t.streak=(t.last===prevActiveDay(d))?t.streak+1:1; t.best=Math.max(t.best,t.streak); t.last=d; sys('Quest complete','"'+t.name+'" reached by your logged sets.'); if([10,30,66,100,365].includes(t.streak)){S.tokens++;S.tokensEarned++;} } }
   checkLevels(b,bs,SUB_SKILL[ex.primary]); document.getElementById('ex-amt').value=''; save(); checkAch(); render();
 }
 function delSet(id){ const st=S.sets.find(x=>x.id===id); if(!st) return; S.sets=S.sets.filter(x=>x.id!==id); S.log=S.log.filter(e=>e.task!==id); recomputeRecap(st.date); save(); render(); }
@@ -688,13 +736,15 @@ function lockScreen(){ if(!S.pin||sessionStorage.getItem('sys-unlocked')===S.pin
   const go=async()=>{ const h=await hashPin(document.getElementById('lockIn').value); if(h===S.pin){ sessionStorage.setItem('sys-unlocked',S.pin); o.remove(); document.body.classList.remove('locked'); } else { document.getElementById('lockMsg').textContent='Wrong PIN'; document.getElementById('lockIn').value=''; } };
   document.getElementById('lockBtn').onclick=go; document.getElementById('lockIn').onkeydown=e=>{ if(e.key==='Enter') go(); }; }
 function checkAch(){ checkGoals(); for(const a of ACH){ if(!S.ach[a.id]&&a.test(S)){ S.ach[a.id]=today(); sys('Achievement unlocked',a.name+' — '+a.q); } } save(); }
-function sys(h,p){ const t=document.getElementById('toast'); const e=document.createElement('div'); e.className='sysmsg'; e.innerHTML='<h3>'+h+'</h3><p>'+esc(p)+'</p>'; t.appendChild(e); setTimeout(()=>e.remove(),4200); }
+const QUIET=new Set(['Set logged','Action done','Added to daily quests','Already daily','Reading quest added','Session logged','PIN set','PIN removed','Restored','Brush & floss','Water','Stairs','Quest complete']);
+function logEvent(h,p){ S.events=S.events||[]; S.events.push({d:today(),t:new Date().toTimeString().slice(0,5),h,p}); if(S.events.length>400) S.events=S.events.slice(-400); }
+function sys(h,p){ if(!QUIET.has(h)) logEvent(h,p); const t=document.getElementById('toast'); const e=document.createElement('div'); e.className='sysmsg'; e.innerHTML='<h3>'+h+'</h3><p>'+esc(p)+'</p>'; t.appendChild(e); setTimeout(()=>e.remove(),4200); }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 /* ========= RENDER ========= */
 let ratingMode='current';
 function setRating(m,btn){ ratingMode=m; btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); renderStats(); }
-function render(){ renderTop(); renderPlayer(); renderQuests(); renderTrackers(); renderSkillTree(); renderGoals(); renderTrain(); renderStats(); renderProgress(); renderAch(); renderLearn(); }
+function render(){ renderTop(); renderPlayer(); renderBanner(); renderStrip(); renderEvents(); renderQuests(); renderTrackers(); renderSkillTree(); renderGoals(); renderTrain(); renderStats(); renderProgress(); renderAch(); renderLearn(); }
 function renderPlayer(){
   const cl=charLevel(S); const r=rankOf(cl.lvl); const nextR=nextRank(cl.lvl);
   const di=dayIndex();
@@ -709,6 +759,13 @@ function renderPlayer(){
     <div style="margin-top:12px">${Object.keys(SKILLS).map(k=>{const L=skillLevel(S,k); const d1=(S.day1||{})[k]||1; return `<div class="statrow"><b>${k.toUpperCase()}</b><span class="v">${L.lvl}${L.lvl>d1?`<small>+${L.lvl-d1}</small>`:''}</span></div>`;}).join('')}</div>
     <div class="muted" style="font-size:12px;margin-top:10px">Best streak ${bestStreak(S)} days · ${Object.keys(S.ach).length} achievements · ${fmt(charXP(S))} lifetime XP</div>`;
 }
+function renderStrip(){ const d=today(); const done=S.tasks.filter(t=>t.last===d).length; const teaser=S.log.some(e=>e.task==='teaser'&&e.date===d);
+  document.getElementById('strip').innerHTML=`<div><b>${done}/${S.tasks.length}</b><span>quests</span></div><div><b>${fmt(S.recap[d]||0)}</b><span>XP today</span></div><div><b style="color:var(--hp)">${S.hp}</b><span>HP</span></div><div><b style="color:${teaser?'var(--ok)':'var(--muted)'}">${teaser?'✓':'–'}</b><span>teaser</span></div>`;
+  const rest=S.restDays[d]; document.getElementById('restInfo').textContent=rest?'Rest day — streaks and HP protected today.':restUsedThisWeek()?'Rest day used this week (resets Monday).':'1 rest day available this week.'; document.getElementById('restBtn').disabled=!!rest||restUsedThisWeek(); }
+function renderBanner(){ const last=(S.backups||[]).slice(-1)[0]; const days=last?Math.floor((new Date(today()+'T12:00:00')-new Date(last+'T12:00:00'))/864e5):null; const show=(days===null&&dayIndex()>7)||(days!==null&&days>=30);
+  document.getElementById('banner').innerHTML=show?`<div class="banner"><span>${days===null?'No backup yet.':'Last backup '+days+' days ago.'} Export one so a lost phone doesn't mean a lost hunter.</span><button class="btn sm" onclick="exportData()">Export</button></div>`:''; }
+function syncReminder(){ try{ if(window.Android&&Android.setReminder){ const d=today(); const left=S.tasks.length-S.tasks.filter(t=>t.last===d).length; const [h,m]=(S.reminder.time||'21:00').split(':').map(Number); Android.setReminder(S.reminder.on?1:0,h,m,'The System','Daily quests close at midnight. '+left+' still open when you last checked.'); } }catch(e){} }
+function markBookRead(t){ S.booksRead[t]=today(); sys('Book finished',t+' · +120 XP → Knowledge'); S.log.push({task:'book',date:today(),sub:'Knowledge',xp:Math.round(120*weakMult())}); recomputeRecap(today()); save(); checkAch(); render(); }
 function renderTop(){
   const di=dayIndex(); const cl=charLevel(S);
   document.getElementById('dayTitle').textContent= di<=66 ? 'Day '+di+' / 66' : 'Day '+di;
@@ -776,14 +833,15 @@ function renderProgress(){
   document.getElementById('streakList').innerHTML=S.tasks.slice().sort((a,b)=>b.streak-a.streak).map(t=>`<div class="sub"><b>${esc(t.name)}</b><span>${t.streak} now · best ${t.best} · ×${streakMult(t.streak).toFixed(2)}</span></div>`).join('')||'<div class="empty">No quests yet.</div>';
   document.getElementById('histGrid').innerHTML=`<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:11px;width:100%"><tr><td></td>${days.map(d=>`<td style="color:#7F8DB8;text-align:center;padding:2px">${d.slice(8)}</td>`).join('')}</tr>${S.tasks.map(t=>`<tr><td style="color:#DDE6FF;white-space:nowrap;padding:2px 6px 2px 0;max-width:110px;overflow:hidden;text-overflow:ellipsis">${esc(t.name)}</td>${days.map(d=>{const on=S.log.some(e=>e.task===t.id&&e.date===d);return `<td style="text-align:center"><span style="display:inline-block;width:12px;height:12px;background:${on?'#4FA3FF':'#0A1024'};border:1px solid #243465"></span></td>`;}).join('')}</tr>`).join('')}</table></div>`;
 }
+function renderEvents(){ const ev=(S.events||[]).slice(-60).reverse(); document.getElementById('eventLog').innerHTML=ev.length?ev.map(e=>`<div class="evt"><span class="d">${e.d.slice(5)} ${e.t}</span><div><b>${esc(e.h)}</b> ${esc(e.p)}</div></div>`).join(''):'<div class="empty">Nothing logged yet.</div>'; }
 function renderAch(){
   const n=Object.keys(S.ach).length; document.getElementById('achCount').textContent=n+' / '+ACH.length;
   document.getElementById('achGrid').innerHTML=ACH.map(a=>S.ach[a.id]?`<div class="tile on"><div><b>${a.name}</b><span>${esc(a.q)}</span></div></div>`:`<div class="tile"><div><div class="q">?</div>${a.name}</div></div>`).join('');
 }
 function renderLearn(){
-  const di=Math.max(0,dayIndex()-1); const b=BOOKS[di%BOOKS.length];
-  document.getElementById('learnBox').innerHTML=`<h2>Daily learning <small>day ${di+1} of the arc</small></h2><h3>${esc(b.t)}</h3><div class="by">${esc(b.a)}</div><p><b>Why read it:</b> ${esc(b.why)}</p><p><b>What you'll take from it:</b></p><ul>${b.pts.map(p=>`<li>${esc(p)}</li>`).join('')}</ul><div class="row" style="margin-top:8px"><span class="muted">Like the look of it?</span>${S.quests.some(q=>q.book===b.t)?'<span class="ok">Added as a quest</span>':`<button class="btn sm" onclick="addBookQuest(${di%BOOKS.length})">Add as a reading quest</button>`}</div><p class="muted">Short original summaries, one per day, rotating through ten books.</p>`;
-  document.getElementById('nameIn').value=S.name; document.getElementById('titleIn').value=S.title; document.getElementById('thrIn').value=S.threshold||6; document.getElementById('pinIn').placeholder=S.pin?'PIN set — enter new, or blank to remove':'4–6 digits, blank to remove';
+  const di=Math.max(0,dayIndex()-1); const unread=BOOKS.filter(x=>!S.booksRead[x.t]); const pool=unread.length?unread:BOOKS; const b=pool[di%pool.length]; const bi=BOOKS.indexOf(b);
+  document.getElementById('learnBox').innerHTML=`<h2>Daily learning <small>day ${di+1} of the arc</small></h2><h3>${esc(b.t)}</h3><div class="by">${esc(b.a)}</div><p><b>Why read it:</b> ${esc(b.why)}</p><p><b>What you'll take from it:</b></p><ul>${b.pts.map(p=>`<li>${esc(p)}</li>`).join('')}</ul><div class="row" style="margin-top:8px"><span class="muted">Like the look of it?</span>${S.quests.some(q=>q.book===b.t)?'<span class="ok">Added as a quest</span>':`<button class="btn sm" onclick="addBookQuest(${bi})">Add as a reading quest</button>`} ${S.booksRead[b.t]?'<span class="muted">· read</span>':`<button class="btn sm" onclick="markBookRead('${esc(b.t).replace(/'/g,"\\'")}')">Already read it</button>`}</div><p class="muted">Short original summaries, one per day, rotating through ${BOOKS.length} books; ones you mark as read drop out of the rotation.</p>`;
+  document.getElementById('nameIn').value=S.name; document.getElementById('titleIn').value=S.title; document.getElementById('thrIn').value=S.threshold||6; document.getElementById('remOn').value=S.reminder.on?'1':'0'; document.getElementById('remTime').value=S.reminder.time||'21:00'; document.getElementById('pinIn').placeholder=S.pin?'PIN set — enter new, or blank to remove':'4–6 digits, blank to remove';
   document.getElementById('tierSlots').innerHTML='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">'+AVATAR_TIERS.map((t,i)=>`<div style="text-align:center"><div class="card ${t.rarity}" style="width:100%;height:96px;margin:0 auto" onclick="const f=document.getElementById('avatarFile');f.dataset.tier='${t.id}';f.click()"><div class="pic" style="font-size:22px;${S.avatars[t.id]?`background-image:url(${S.avatars[t.id]})`:''}">${S.avatars[t.id]?'':'+'}</div></div><div class="disp" style="font-size:13px;margin-top:3px">${i+1}. ${t.name}</div><div class="muted" style="font-size:11px">${t.note}</div></div>`).join('')+'</div><p class="muted" style="font-size:12px;margin:8px 0 0">Tap a card to set its image. Empty cards show the previous form.</p>'; document.getElementById('startIn').value=S.start;
 }
 
@@ -843,7 +901,7 @@ function closeModal(){ document.getElementById('modal').classList.remove('on'); 
 document.getElementById('modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
 
 /* ========= BACKUP ========= */
-function exportData(){ S.backups=S.backups||[]; if(!S.backups.includes(today())) S.backups.push(today()); save(); const json=JSON.stringify(S,null,2); const fname='system-backup-'+today()+'.json'; if(window.Android&&Android.saveFile){ Android.saveFile(fname,json); } else { const blob=new Blob([json],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); } checkGoals(); save(); render(); sys('Backup exported','Keep the file somewhere safe. Monthly backup goal counted.'); }
+function exportData(){ S.backups=S.backups||[]; S.events=S.events||[]; S.restDays=S.restDays||{}; S.booksRead=S.booksRead||{}; S.reminder=S.reminder||{on:true,time:'21:00'}; if(!S.backups.includes(today())) S.backups.push(today()); save(); const json=JSON.stringify(S,null,2); const fname='system-backup-'+today()+'.json'; if(window.Android&&Android.saveFile){ Android.saveFile(fname,json); } else { const blob=new Blob([json],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); } checkGoals(); save(); render(); sys('Backup exported','Keep the file somewhere safe. Monthly backup goal counted.'); }
 function importData(inp){ const f=inp.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const o=JSON.parse(r.result); if(o.tasks&&o.log){ S=o; save(); render(); sys('Restored','Backup imported.'); } else alert('That file is not a System backup.'); }catch(e){ alert('Could not read that file.'); } }; r.readAsText(f); }
 function resetAll(){ if(!confirm('Erase all progress? This cannot be undone.')) return; S=fresh(); S.day1=null; save(); load(); render(); }
 
