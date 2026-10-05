@@ -272,6 +272,10 @@ jobs:
               }
           }
           EOF
+      - name: Use the fixed signing key
+        run: |
+          mkdir -p ~/.android
+          cp the-system.keystore ~/.android/debug.keystore
       - name: Build debug APK
         working-directory: android
         run: |
