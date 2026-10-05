@@ -289,7 +289,8 @@ jobs:
       - name: Publish as release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: The System (latest APK)
+          tag_name: build-${{ github.run_number }}
+          name: The System v1.${{ github.run_number }}
           body: Download the-system.apk below and open it on your phone to install.
           files: the-system.apk
+          make_latest: true
