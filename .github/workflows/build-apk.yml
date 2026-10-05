@@ -60,6 +60,8 @@ jobs:
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.INTERNET"/>
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+              <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
               <application android:label="The System" android:icon="@mipmap/ic_launcher" android:allowBackup="true" android:supportsRtl="true" android:theme="@android:style/Theme.Material.NoActionBar">
                   <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden|uiMode" android:windowSoftInputMode="adjustResize">
                       <intent-filter>
@@ -67,6 +69,9 @@ jobs:
                           <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
                   </activity>
+                  <receiver android:name=".ReminderReceiver" android:exported="true">
+                      <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter>
+                  </receiver>
               </application>
           </manifest>
           EOF
@@ -93,6 +98,9 @@ jobs:
           import androidx.webkit.WebViewAssetLoader;
           import androidx.webkit.WebViewClientCompat;
           import java.io.OutputStream;
+          import android.Manifest;
+          import android.os.Build;
+          import android.content.SharedPreferences;
 
           public class MainActivity extends Activity {
               private static final String HOME = "https://appassets.androidplatform.net/assets/index.html";
@@ -160,6 +168,7 @@ jobs:
                   });
 
                   web.addJavascriptInterface(new Bridge(), "Android");
+                  if (Build.VERSION.SDK_INT >= 33) requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 2);
                   if (saved != null) web.restoreState(saved); else web.loadUrl(HOME);
               }
 
@@ -169,6 +178,13 @@ jobs:
               }
 
               class Bridge {
+                  @JavascriptInterface
+                  public void setReminder(int on, int hour, int minute, String title, String text) {
+                      SharedPreferences p = getSharedPreferences("reminder", MODE_PRIVATE);
+                      p.edit().putBoolean("on", on == 1).putInt("h", hour).putInt("m", minute).putString("title", title).putString("text", text).apply();
+                      ReminderReceiver.schedule(MainActivity.this);
+                  }
+
                   @JavascriptInterface
                   public void saveFile(String name, String content) {
                       try {
@@ -204,6 +220,55 @@ jobs:
               protected void onSaveInstanceState(Bundle out) {
                   super.onSaveInstanceState(out);
                   web.saveState(out);
+              }
+          }
+          EOF
+          cat > $A/java/uk/thesystem/app/ReminderReceiver.java <<'EOF'
+          package uk.thesystem.app;
+
+          import android.app.AlarmManager;
+          import android.app.Notification;
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.app.PendingIntent;
+          import android.content.BroadcastReceiver;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.content.SharedPreferences;
+          import java.util.Calendar;
+
+          public class ReminderReceiver extends BroadcastReceiver {
+              static final String CH = "daily";
+
+              public static void schedule(Context c) {
+                  SharedPreferences p = c.getSharedPreferences("reminder", Context.MODE_PRIVATE);
+                  AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+                  PendingIntent pi = PendingIntent.getBroadcast(c, 1, new Intent(c, ReminderReceiver.class), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                  am.cancel(pi);
+                  if (!p.getBoolean("on", true)) return;
+                  Calendar cal = Calendar.getInstance();
+                  cal.set(Calendar.HOUR_OF_DAY, p.getInt("h", 21));
+                  cal.set(Calendar.MINUTE, p.getInt("m", 0));
+                  cal.set(Calendar.SECOND, 0);
+                  if (cal.getTimeInMillis() <= System.currentTimeMillis()) cal.add(Calendar.DAY_OF_YEAR, 1);
+                  am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
+              }
+
+              @Override
+              public void onReceive(Context c, Intent i) {
+                  if (Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) { schedule(c); return; }
+                  SharedPreferences p = c.getSharedPreferences("reminder", Context.MODE_PRIVATE);
+                  NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+                  nm.createNotificationChannel(new NotificationChannel(CH, "Daily reminder", NotificationManager.IMPORTANCE_DEFAULT));
+                  PendingIntent open = PendingIntent.getActivity(c, 0, new Intent(c, MainActivity.class), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                  Notification n = new Notification.Builder(c, CH)
+                          .setSmallIcon(android.R.drawable.ic_dialog_info)
+                          .setContentTitle(p.getString("title", "The System"))
+                          .setContentText(p.getString("text", "Daily quests close at midnight."))
+                          .setStyle(new Notification.BigTextStyle().bigText(p.getString("text", "Daily quests close at midnight.")))
+                          .setContentIntent(open).setAutoCancel(true).build();
+                  nm.notify(1, n);
+                  schedule(c);
               }
           }
           EOF
