@@ -34,14 +34,17 @@ jobs:
           include ':app'
           EOF
           cat > android/build.gradle <<'EOF'
-          plugins { id 'com.android.application' version '8.5.2' apply false }
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+              id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
+          }
           EOF
           cat > android/gradle.properties <<'EOF'
           android.useAndroidX=true
           org.gradle.jvmargs=-Xmx3g
           EOF
           cat > android/app/build.gradle <<'EOF'
-          plugins { id 'com.android.application' }
+          plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
           android {
               namespace 'uk.thesystem.app'
               compileSdk 34
@@ -53,8 +56,14 @@ jobs:
                   versionName '1.${{ github.run_number }}'
               }
               compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+              kotlinOptions { jvmTarget = '17' }
           }
-          dependencies { implementation 'androidx.webkit:webkit:1.11.0' }
+          dependencies {
+              implementation 'androidx.webkit:webkit:1.11.0'
+              implementation 'androidx.activity:activity-ktx:1.9.2'
+              implementation 'androidx.health.connect:connect-client:1.1.0-alpha07'
+              implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
+          }
           EOF
           cat > $A/AndroidManifest.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
@@ -62,13 +71,26 @@ jobs:
               <uses-permission android:name="android.permission.INTERNET"/>
               <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
               <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+              <uses-permission android:name="android.permission.health.READ_STEPS"/>
+              <queries>
+                  <package android:name="com.google.android.apps.healthdata"/>
+              </queries>
               <application android:label="The System" android:icon="@mipmap/ic_launcher" android:allowBackup="true" android:supportsRtl="true" android:theme="@android:style/Theme.Material.NoActionBar">
                   <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden|uiMode" android:windowSoftInputMode="adjustResize">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
+                      <intent-filter>
+                          <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>
+                      </intent-filter>
                   </activity>
+                  <activity-alias android:name="ViewPermissionUsageActivity" android:exported="true" android:targetActivity=".MainActivity" android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+                      <intent-filter>
+                          <action android:name="android.intent.action.VIEW_PERMISSION_USAGE"/>
+                          <category android:name="android.intent.category.HEALTH_PERMISSIONS"/>
+                      </intent-filter>
+                  </activity-alias>
                   <receiver android:name=".ReminderReceiver" android:exported="true">
                       <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter>
                   </receiver>
@@ -78,7 +100,7 @@ jobs:
           cat > $A/java/uk/thesystem/app/MainActivity.java <<'EOF'
           package uk.thesystem.app;
 
-          import android.app.Activity;
+          import androidx.activity.ComponentActivity;
           import android.content.ContentValues;
           import android.content.Intent;
           import android.net.Uri;
@@ -102,7 +124,8 @@ jobs:
           import android.os.Build;
           import android.content.SharedPreferences;
 
-          public class MainActivity extends Activity {
+          public class MainActivity extends ComponentActivity {
+              private StepsHelper steps;
               private static final String HOME = "https://appassets.androidplatform.net/assets/index.html";
               private static final int FILE_REQ = 1;
               private WebView web;
@@ -111,6 +134,7 @@ jobs:
               @Override
               protected void onCreate(Bundle saved) {
                   super.onCreate(saved);
+                  steps = new StepsHelper(this, n -> { runOnUiThread(() -> web.evaluateJavascript("window.onSteps&&window.onSteps(" + n + ")", null)); return kotlin.Unit.INSTANCE; });
                   web = new WebView(this);
                   web.setBackgroundColor(0xFF070B18);
                   setContentView(web);
@@ -177,7 +201,15 @@ jobs:
                   catch (Exception e) { Toast.makeText(this, "No app can open this link", Toast.LENGTH_SHORT).show(); }
               }
 
+              @Override
+              protected void onResume() {
+                  super.onResume();
+                  if (web != null) web.evaluateJavascript("window.refreshSteps&&window.Android&&window.Android.requestSteps&&window.Android.requestSteps()", null);
+              }
+
               class Bridge {
+                  @JavascriptInterface
+                  public void requestSteps() { runOnUiThread(() -> steps.request()); }
                   @JavascriptInterface
                   public void setReminder(int on, int hour, int minute, String title, String text) {
                       SharedPreferences p = getSharedPreferences("reminder", MODE_PRIVATE);
@@ -220,6 +252,56 @@ jobs:
               protected void onSaveInstanceState(Bundle out) {
                   super.onSaveInstanceState(out);
                   web.saveState(out);
+              }
+          }
+          EOF
+          cat > $A/java/uk/thesystem/app/StepsHelper.kt <<'EOF'
+          package uk.thesystem.app
+
+          import androidx.activity.ComponentActivity
+          import androidx.activity.result.ActivityResultLauncher
+          import androidx.health.connect.client.HealthConnectClient
+          import androidx.health.connect.client.PermissionController
+          import androidx.health.connect.client.permission.HealthPermission
+          import androidx.health.connect.client.records.StepsRecord
+          import androidx.health.connect.client.request.AggregateRequest
+          import androidx.health.connect.client.time.TimeRangeFilter
+          import kotlinx.coroutines.CoroutineScope
+          import kotlinx.coroutines.Dispatchers
+          import kotlinx.coroutines.launch
+          import java.time.Instant
+          import java.time.LocalDate
+          import java.time.ZoneId
+
+          class StepsHelper(private val activity: ComponentActivity, private val onResult: (Long) -> Unit) {
+              private val perms = setOf(HealthPermission.getReadPermission(StepsRecord::class))
+              private val scope = CoroutineScope(Dispatchers.Main)
+              private val launcher: ActivityResultLauncher<Set<String>> =
+                  activity.registerForActivityResult(PermissionController.createRequestPermissionResultContract()) { granted ->
+                      if (granted.containsAll(perms)) read() else onResult(-2)
+                  }
+
+              fun request() {
+                  if (HealthConnectClient.getSdkStatus(activity) != HealthConnectClient.SDK_AVAILABLE) { onResult(-1); return }
+                  val client = HealthConnectClient.getOrCreate(activity)
+                  scope.launch {
+                      try {
+                          val granted = client.permissionController.getGrantedPermissions()
+                          if (granted.containsAll(perms)) read() else launcher.launch(perms)
+                      } catch (e: Exception) { onResult(-3) }
+                  }
+              }
+
+              private fun read() {
+                  val client = HealthConnectClient.getOrCreate(activity)
+                  scope.launch {
+                      try {
+                          val zone = ZoneId.systemDefault()
+                          val start = LocalDate.now(zone).atStartOfDay(zone).toInstant()
+                          val r = client.aggregate(AggregateRequest(setOf(StepsRecord.COUNT_TOTAL), TimeRangeFilter.between(start, Instant.now())))
+                          onResult(r[StepsRecord.COUNT_TOTAL] ?: 0L)
+                      } catch (e: Exception) { onResult(-3) }
+                  }
               }
           }
           EOF
