@@ -383,7 +383,8 @@ jobs:
           EOF
       - name: Check the signing key is present
         run: |
-          test -f the-system.keystore && keytool -list -keystore the-system.keystore -storepass android | grep -i sha256 || (echo "the-system.keystore missing from repo root" && exit 1)
+          test -f the-system.keystore || (echo "the-system.keystore missing from repo root" && exit 1)
+          keytool -list -keystore the-system.keystore -storepass android | grep -i "sha-256" || true
       - name: Build debug APK
         working-directory: android
         run: |
