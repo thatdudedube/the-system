@@ -118,6 +118,20 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--sys);outli
 .overlay{position:fixed;inset:0;background:rgba(3,6,14,.8);display:none;place-items:center;z-index:8;padding:16px}
 .overlay.on{display:grid}
 .overlay .win{width:100%;max-width:440px;max-height:90vh;overflow:auto}
+.lvlup{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:radial-gradient(circle,rgba(79,163,255,.35),rgba(3,6,14,.96) 70%);animation:flash .4s ease-out;cursor:pointer}
+.lvlup h1{font-size:64px;color:#fff;text-shadow:0 0 30px var(--sys),0 0 60px var(--sys);letter-spacing:.1em;animation:pop .5s ease-out}
+.lvlup .sub{font-family:Rajdhani;font-size:26px;color:var(--sys);text-align:center;margin-top:8px}
+.lvlup .lines{margin-top:18px;font-family:Rajdhani;font-size:18px;color:var(--text);text-align:center;line-height:1.6}
+@keyframes flash{from{opacity:0}to{opacity:1}}
+.boss{border:1px solid #6B2238;background:linear-gradient(180deg,#1a0d16,var(--panel));padding:14px 16px;margin-bottom:14px;position:relative}
+.boss h2{color:var(--hp);font-size:20px;margin-bottom:6px}
+.boss .bar{height:12px}.boss .bar>i{background:linear-gradient(90deg,#8A1F35,var(--hp));box-shadow:0 0 12px rgba(255,79,109,.5)}
+.emerg{border:1px solid var(--gold);background:linear-gradient(180deg,#1b160a,var(--panel));padding:12px 14px;margin-bottom:12px;animation:glow 2s ease-in-out infinite}
+.emerg h2{color:var(--gold);font-size:19px;margin-bottom:4px}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(242,193,78,0)}50%{box-shadow:0 0 22px -4px rgba(242,193,78,.6)}}
+.box{display:inline-block;font-size:28px;animation:wiggle 1.6s ease-in-out infinite}
+@keyframes wiggle{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}
+@media (prefers-reduced-motion:reduce){.lvlup,.lvlup h1,.emerg,.box{animation:none}}
 label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{border:1px solid var(--line);padding:4px 8px;font-size:12px;background:none;color:var(--muted)}
@@ -212,22 +226,22 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
       </div>
       <div class="row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)"><span class="muted" id="restInfo"></span><button class="btn sm" id="restBtn" onclick="takeRestDay()">Take a rest day</button></div>
     </div>
-    <div class="win">
-      <h2>Daily trackers <small>tap as you go</small></h2>
+    <div class="win col" id="trkWin">
+      <h2 onclick="toggleWin('trkWin')">Daily trackers <small>tap as you go</small></h2>
       <div id="trackers"></div>
     </div>
     <div class="win tree col" id="treeWin">
-      <h2 onclick="this.parentElement.classList.toggle('open')">Skill tree <small>one-off actions · Do now for XP today, + Daily to add to your list</small></h2>
+      <h2 onclick="toggleWin('treeWin')">Skill tree <small>one-off actions · Do now for XP today, + Daily to add to your list</small></h2>
       <div id="skillTree"></div>
       <button class="btn sm" style="margin-top:8px" onclick="openSkillItemModal()">Add your own action</button>
     </div>
-    <div class="win">
-      <h2>Quests <small>finite, with a bonus on completion</small></h2>
+    <div class="win col" id="questWin">
+      <h2 onclick="toggleWin('questWin')">Quests <small>finite, with a bonus on completion</small></h2>
       <div id="questList"></div>
       <button class="btn sm" style="margin-top:10px" onclick="openQuestModal()">New quest</button>
     </div>
     <div class="win col" id="projWin">
-      <h2 onclick="this.parentElement.classList.toggle('open')">Projects <small>ongoing · XP per session</small></h2>
+      <h2 onclick="toggleWin('projWin')">Projects <small>ongoing · XP per session</small></h2>
       <div id="projectList"></div>
       <button class="btn sm" style="margin-top:10px" onclick="openProjectModal()">New project</button>
     </div>
@@ -240,10 +254,16 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
       <h2>Log training <small>XP is worked out per rep, second or km</small></h2>
       <label>Exercise</label><select id="ex-sel" onchange="renderTrainForm()"></select>
       <label>Variation</label><select id="ex-var" onchange="renderTrainForm()"></select>
+      <div id="ex-sidewrap" style="display:none"><label>Direction / side</label><div class="tabs" id="ex-side"></div></div>
       <label id="ex-amtlabel">Amount</label>
       <div class="row" style="gap:8px"><input type="number" id="ex-amt" min="0" step="1" placeholder="e.g. 20" oninput="renderTrainForm()"><button class="btn primary" onclick="logSet()">Log set</button></div>
       <div class="muted" id="ex-preview" style="margin-top:8px"></div>
       <div class="row" style="margin-top:10px"><span></span><button class="btn sm" onclick="openExerciseModal()">Add custom exercise</button></div>
+    </div>
+    <div class="win">
+      <h2>Saved workouts <small>log a whole circuit in one tap</small></h2>
+      <div id="workoutList"></div>
+      <button class="btn sm" style="margin-top:8px" onclick="openWorkoutModal()">New workout</button>
     </div>
     <div class="win">
       <h2>Today <small id="trainDate"></small></h2>
@@ -315,7 +335,7 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
       <label>Quests needed each day to avoid the HP penalty</label><input type="number" id="thrIn" min="1" onchange="S.threshold=Math.max(1,Number(this.value)||6);save();render()">
       <label>PIN lock <span class="muted">(hides the app from a glance; your phone lock is the real security)</span></label>
       <div class="row" style="gap:8px"><input type="password" id="pinIn" inputmode="numeric" maxlength="6" placeholder="4–6 digits, blank to remove"><button class="btn sm" onclick="setPin()">Save PIN</button></div>
-      <label>Title shown on status window</label><input id="titleIn" onchange="S.title=this.value;save();render()">
+      <label>Title shown on status window</label><select id="titleIn" onchange="S.title=this.value;save();render()"></select>
       <label>Awakening arc started</label><input type="date" id="startIn" onchange="S.start=this.value;save();render()">
       <div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap">
         <button class="btn sm" onclick="exportData()">Export backup</button>
@@ -372,6 +392,12 @@ const EXERCISES = [
   {id:'walk',name:'Walking',unit:'km',xp:8,primary:'Energy',secondary:['Longevity','Inner Peace'],variants:{'Standard':1,'Rucking':1.6}},
   {id:'cycle',name:'Cycling',unit:'km',xp:6,primary:'Fitness',secondary:['Energy'],variants:{'Steady':1,'Hills':1.4}},
   {id:'swim',name:'Swimming',unit:'metres',xp:.08,primary:'Fitness',secondary:['Flexibility','Recovery'],variants:{'Steady':1,'Sprints':1.4}},
+  {id:'kb_around',name:'Kettlebell around-the-body',unit:'reps',xp:.35,primary:'Strength',secondary:['Balance','Flexibility'],
+   variants:{'8 kg':.7,'12 kg':1,'16 kg':1.3,'20 kg':1.6,'24 kg':2,'28 kg':2.4,'32 kg':2.8},sides:['Clockwise','Anti-clockwise']},
+  {id:'kb_swing',name:'Kettlebell swings',unit:'reps',xp:.45,primary:'Strength',secondary:['Fitness','Energy'],variants:{'8 kg':.7,'12 kg':1,'16 kg':1.3,'20 kg':1.6,'24 kg':2,'28 kg':2.4,'32 kg':2.8}},
+  {id:'kb_clean',name:'Kettlebell cleans',unit:'reps',xp:.5,primary:'Strength',secondary:['Fitness','Balance'],variants:{'8 kg':.7,'12 kg':1,'16 kg':1.3,'20 kg':1.6,'24 kg':2,'28 kg':2.4,'32 kg':2.8}},
+  {id:'kb_thruster',name:'Kettlebell thrusters',unit:'reps',xp:.6,primary:'Strength',secondary:['Fitness','Energy'],variants:{'8 kg':.7,'12 kg':1,'16 kg':1.3,'20 kg':1.6,'24 kg':2,'28 kg':2.4,'32 kg':2.8}},
+  {id:'kb_highpull',name:'Kettlebell high pulls',unit:'reps',xp:.45,primary:'Strength',secondary:['Aesthetic','Energy'],variants:{'8 kg':.7,'12 kg':1,'16 kg':1.3,'20 kg':1.6,'24 kg':2,'28 kg':2.4,'32 kg':2.8}},
   {id:'badminton',name:'Badminton',unit:'minutes',xp:1.5,primary:'Fitness',secondary:['Balance','Energy','Focus'],variants:{'Casual rally':1,'Training drills':1.2,'Competitive match':1.4,'Tournament':1.6}},
   {id:'sport',name:'Other sport',unit:'minutes',xp:1.4,primary:'Fitness',secondary:['Energy','Balance'],variants:{'Football':1,'Basketball':1,'Tennis':1,'Boxing / martial arts':1.4,'Climbing':1.3,'Dance':1}},
   {id:'stretch',name:'Stretching / mobility',unit:'minutes',xp:1,primary:'Flexibility',secondary:['Recovery','Balance'],variants:{'Static':1,'Dynamic':1.1,'Yoga':1.2}},
@@ -393,12 +419,13 @@ const DEFAULT_TASKS = [
   {name:'Run', diff:'hard', primary:'Fitness', secondary:['Energy','Grit'], essential:false, link:{ex:'run',target:2,scale:{stat:'Fitness',base:2,per:0.25,cap:10}}},
   {name:'Read 20 pages', diff:'medium', primary:'Knowledge', secondary:['Curiosity','Focus'], essential:true},
   {name:'10 minutes of meditation', diff:'easy', primary:'Inner Peace', secondary:['Balance'], essential:false},
-  {name:'Drink 2 litres of water', diff:'easy', primary:'Nutrition', secondary:['Longevity'], essential:false},
+  {name:'Drink 2 litres of water', diff:'easy', primary:'Nutrition', secondary:['Longevity'], essential:false, link:{ex:'tracker:water',target:8}},
   {name:'Practise drums 30 min', diff:'medium', primary:'Creativity', secondary:['Mastery','Flow'], essential:false},
   {name:'Healthy lunch', diff:'easy', primary:'Nutrition', secondary:['Longevity','Self-Discipline'], essential:false},
   {name:'Healthy dinner', diff:'easy', primary:'Nutrition', secondary:['Longevity','Self-Discipline'], essential:false},
   {name:'Plan tomorrow', diff:'easy', primary:'Focus', secondary:['Self-Discipline'], essential:false},
 ];
+const TITLES={first:'The Awakened',s10:'The Consistent',s30:'Iron Will',s66:'Habit Forged',s100:'Centurion',s365:'The Unbroken',lv10:'D-Rank Hunter',lv20:'C-Rank Hunter',lv30:'B-Rank Hunter',quest:'Quest Breaker',arc:'Arc Survivor',all5:'Well Rounded',skill10:'Specialist',fullday:'Flawless',shield:'Shield Bearer',iron:'Unyielding'};
 const ACH = [
   {id:'first', name:'First Blood', test:s=>s.log.length>0, q:'Every system begins with a single input.'},
   {id:'awaken', name:'Awakened', test:s=>Object.values(s.recap).some(v=>v>0), q:'You noticed the window. Most never do.'},
@@ -483,7 +510,7 @@ function fresh(){
 }
 function load(){ try{const r=localStorage.getItem(KEY); S=r?JSON.parse(r):fresh();}catch(e){S=fresh();} if(!S.day1){S.day1=snapshot();} S.sets=S.sets||[]; S.customEx=S.customEx||[]; S.title=S.title||'Newly awakened'; if(!S.avatar) S.avatar=DEFAULT_AVATAR; S.avatars=S.avatars||{};
   if(!S.scaleMigrated){ S.scaleMigrated=true; for(const t of S.tasks){ if(t.link&&!t.link.scale){ if(t.link.ex==='pushups'){t.link.scale={stat:'Strength',base:30,per:5,cap:200}; if(/^\d+ push/i.test(t.name)) t.name='Push-ups';} else if(t.link.ex==='plank'){t.link.scale={stat:'Fitness',base:30,per:5,cap:180}; if(/minute plank/i.test(t.name)) t.name='Plank';} else if(t.link.ex==='run'){t.link.scale={stat:'Fitness',base:2,per:0.25,cap:10}; if(/run \d/i.test(t.name)) t.name='Run';} } } }
-  S.threshold=S.threshold||6; S.habits=S.habits||{}; S.goalsDone=S.goalsDone||{}; S.manualGoals=S.manualGoals||[{id:'g1',name:'Call family',xp:150,primary:'Positivity',target:1,period:'week'},{id:'g2',name:'Deep clean the room',xp:200,primary:'Self-Discipline',target:1,period:'week'},{id:'g3',name:'Review finances',xp:400,primary:'Logic',target:1,period:'month'}]; S.manualCounts=S.manualCounts||{}; S.customSkill=S.customSkill||[]; S.backups=S.backups||[]; S.events=S.events||[]; S.restDays=S.restDays||{}; S.booksRead=S.booksRead||{}; S.reminder=S.reminder||{on:true,time:'21:00'}; if(!S.mealsAdded){ S.mealsAdded=true; for(const n of ['Healthy lunch','Healthy dinner']) if(!S.tasks.some(t=>t.name===n)) S.tasks.push({id:'t'+n.replace(/\s/g,''),name:n,diff:'easy',primary:'Nutrition',secondary:['Longevity','Self-Discipline'],essential:false,streak:0,best:0,last:null}); } if(S.avatars.hunter&&!S.avatars.f5){S.avatars.f5=S.avatars.hunter;} if(!S.avatars.f5) S.avatars.f5=DEFAULT_AVATAR; for(const k in FORM_IMAGES) if(!S.avatars[k]||!S.customAvatars||!S.customAvatars[k]) S.avatars[k]=FORM_IMAGES[k];
+  S.threshold=S.threshold||6; for(const t of S.tasks){ if(!t.link&&/water/i.test(t.name)) t.link={ex:'tracker:water',target:8}; } S.habits=S.habits||{}; S.goalsDone=S.goalsDone||{}; S.manualGoals=S.manualGoals||[{id:'g1',name:'Call family',xp:150,primary:'Positivity',target:1,period:'week'},{id:'g2',name:'Deep clean the room',xp:200,primary:'Self-Discipline',target:1,period:'week'},{id:'g3',name:'Review finances',xp:400,primary:'Logic',target:1,period:'month'}]; S.manualCounts=S.manualCounts||{}; S.customSkill=S.customSkill||[]; S.backups=S.backups||[]; S.events=S.events||[]; S.ui=S.ui||{open:{trkWin:true,questWin:true}}; S.titles=S.titles||['Newly awakened']; S.boxes=S.boxes||0; S.emergency=S.emergency||null; S.boss=S.boss||null; S.workouts=S.workouts||[{id:'w1',name:'20-min kettlebell EMOM',rounds:4,items:[{ex:'kb_clean',variant:'16 kg',amt:15},{ex:'kb_swing',variant:'16 kg',amt:10},{ex:'pushups',variant:'Standard',amt:15},{ex:'kb_thruster',variant:'16 kg',amt:10},{ex:'kb_highpull',variant:'16 kg',amt:15}]}]; S.restDays=S.restDays||{}; S.booksRead=S.booksRead||{}; S.reminder=S.reminder||{on:true,time:'21:00'}; if(!S.mealsAdded){ S.mealsAdded=true; for(const n of ['Healthy lunch','Healthy dinner']) if(!S.tasks.some(t=>t.name===n)) S.tasks.push({id:'t'+n.replace(/\s/g,''),name:n,diff:'easy',primary:'Nutrition',secondary:['Longevity','Self-Discipline'],essential:false,streak:0,best:0,last:null}); } if(S.avatars.hunter&&!S.avatars.f5){S.avatars.f5=S.avatars.hunter;} if(!S.avatars.f5) S.avatars.f5=DEFAULT_AVATAR; for(const k in FORM_IMAGES) if(!S.avatars[k]||!S.customAvatars||!S.customAvatars[k]) S.avatars[k]=FORM_IMAGES[k];
   for(const t of S.tasks){ if(!t.link){ if(/push-?ups?/i.test(t.name)) t.link={ex:'pushups',target:parseInt(t.name)||100}; else if(/plank/i.test(t.name)) t.link={ex:'plank',target:60}; else if(/run/i.test(t.name)&&/km/i.test(t.name)) t.link={ex:'run',target:parseFloat(t.name.match(/[\d.]+/)?.[0])||5}; } } }
 function save(){ try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){} try{ if(S&&S.reminder) syncReminder(); }catch(e){} }
 function today(d=new Date()){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -549,8 +576,11 @@ function toggleTask(id){
   save(); checkAch(); render();
 }
 function recomputeRecap(d){ S.recap[d]=S.log.filter(e=>e.date===d).reduce((a,e)=>a+e.xp,0); }
+function showLevelUp(a,before){ const o=document.createElement('div'); o.className='lvlup'; const tier=currentTier(a), ptier=currentTier(before); const rk=rankOf(a), prk=rankOf(before);
+  o.innerHTML=`<div><h1>LEVEL UP</h1><div class="sub">${esc(S.name)} · Lv ${before} → Lv ${a}</div><div class="lines">${rk!==prk?`Rank ${prk} → <b style="color:var(--gold)">${rk}</b><br>`:''}${tier!==ptier?`New form unlocked: <b style="color:var(--gold)">${tier.name}</b><br>`:''}${Object.keys(SKILLS).map(k=>k.toUpperCase()+' '+skillLevel(S,k).lvl).join(' · ')}<br><span class="muted" style="font-size:13px">tap to continue</span></div></div>`;
+  o.onclick=()=>o.remove(); document.body.appendChild(o); setTimeout(()=>{ if(o.parentNode) o.remove(); },8000); }
 function checkLevels(before,bs,skill){
-  const a=charLevel(S).lvl; if(a>before){ sys('Level up',S.name+' reached level '+a+(rankOf(a)!==rankOf(before)?' — Rank '+rankOf(a)+' achieved.':'.')); }
+  const a=charLevel(S).lvl; if(a>before){ sys('Level up',S.name+' reached level '+a+(rankOf(a)!==rankOf(before)?' — Rank '+rankOf(a)+' achieved.':'.')); showLevelUp(a,before); if(rankOf(a)!==rankOf(before)){ S.boxes++; sys('Reward box','A box has been issued for the rank-up.'); } }
   if(skill){ const n=skillLevel(S,skill).lvl; if(n>bs) sys(skill+' up','Now level '+n+'.'); }
 }
 function toggleStep(qid,i){
@@ -571,20 +601,31 @@ const TRACKERS=[
   {id:'teeth',name:'Brush & floss',unit:'times',target:2,primary:'Longevity',secondary:['Self-Discipline'],perUnit:0,bonus:12,max:4},
   {id:'water',name:'Water',unit:'cups',target:8,primary:'Nutrition',secondary:['Energy'],perUnit:1,bonus:10,max:20},
   {id:'stairs',name:'Stairs',unit:'flights',target:20,primary:'Fitness',secondary:['Strength','Energy'],perUnit:1,bonus:15,max:60},
+  {id:'steps',name:'Steps',unit:'steps',target:10000,primary:'Fitness',secondary:['Energy','Longevity'],perUnit:0.005,bonus:25,max:100000,auto:true},
 ];
+function linkUnit(t){ if(!t.link) return ''; if(t.link.ex.startsWith('tracker:')) return TRACKERS.find(x=>x.id===t.link.ex.slice(8))?.unit||''; return exById(t.link.ex)?.unit||''; }
+function linkTotal(t,d=today()){ if(!t.link) return 0; if(t.link.ex.startsWith('tracker:')) return habitCount(t.link.ex.slice(8),d); return dayTotal(t.link.ex,d); }
+function completeLinked(key){ const d=today(); for(const t of S.tasks){ if(t.link&&t.link.ex===key&&t.last!==d&&linkTotal(t)>=targetOf(t)){ t.prevLast=t.last; t.prevStreak=t.streak; t.streak=(t.last===prevActiveDay(d))?t.streak+1:1; t.best=Math.max(t.best,t.streak); t.last=d; sys('Quest complete','"'+t.name+'" reached from your log.'); if([10,30,66,100,365].includes(t.streak)){S.tokens++;S.tokensEarned++;} } } }
 function habitCount(id,d=today()){ return (S.habits[d]||{})[id]||0; }
-function habitAdd(id,delta){
-  const d=today(); const t=TRACKERS.find(x=>x.id===id); S.habits[d]=S.habits[d]||{}; const before=habitCount(id); const after=Math.max(0,Math.min(t.max,before+delta)); if(after===before) return;
+function habitAdd(id,delta){ habitSet(id,habitCount(id)+delta,delta>0); }
+function habitSet(id,value,announce=true){
+  const d=today(); const t=TRACKERS.find(x=>x.id===id); S.habits[d]=S.habits[d]||{}; const before=habitCount(id); const after=Math.max(0,Math.min(t.max,Math.round(value))); if(after===before) return;
   S.habits[d][id]=after;
   // rebuild today's XP for this tracker from scratch so undo works
   S.log=S.log.filter(e=>!(e.task==='h:'+id&&e.date===d));
   const xp=Math.round((after*t.perUnit+(after>=t.target?t.bonus:0))*weakMult());
   if(xp>0){ S.log.push({task:'h:'+id,date:d,sub:t.primary,xp}); t.secondary.forEach(sub=>S.log.push({task:'h:'+id,date:d,sub,xp:Math.round(xp*.25)})); }
-  recomputeRecap(d); if(after===t.target&&delta>0) sys(t.name,'Daily target reached · +'+t.bonus+' XP bonus.');
-  save(); checkAch(); render();
+  recomputeRecap(d); if(after>=t.target&&before<t.target&&announce) sys(t.name,'Daily target reached · +'+t.bonus+' XP bonus.');
+  completeLinked('tracker:'+id); save(); checkAch(); render();
 }
+function refreshSteps(){ if(window.Android&&Android.requestSteps){ S.stepsStatus='syncing…'; Android.requestSteps(); } else { const v=prompt('Steps today'); if(v) habitSet('steps',Number(v)); } }
+window.onSteps=function(n){ n=Number(n); if(n>=0){ S.stepsStatus='synced '+new Date().toTimeString().slice(0,5); habitSet('steps',n); } else { S.stepsStatus=n===-1?'Health Connect not available on this phone':n===-2?'permission not granted — tap Sync to ask again':'could not read steps — check Samsung Health → Health Connect sync'; render(); } };
+window.refreshSteps=refreshSteps;
 function renderTrackers(){
-  document.getElementById('trackers').innerHTML=TRACKERS.map(t=>{const c=habitCount(t.id); return `<div class="trk"><div class="n">${c}</div><div style="flex:1"><b>${t.name}</b><div class="muted" style="font-size:12px">${c} / ${t.target} ${t.unit}${c>=t.target?' ✓':''} · ${t.perUnit?t.perUnit+' XP each, ':''}+${t.bonus} at target · ${t.primary}</div><div class="bar"><i style="width:${Math.min(100,c/t.target*100)}%"></i></div></div><div class="cnt"><button class="btn" onclick="habitAdd('${t.id}',-1)">−</button><button class="btn primary" onclick="habitAdd('${t.id}',1)">+</button></div></div>`;}).join('');
+  document.getElementById('trackers').innerHTML=TRACKERS.map(t=>{const c=habitCount(t.id); const native=!!(window.Android&&Android.requestSteps);
+    const ctl=t.auto?`<div class="cnt" style="flex-direction:column;gap:4px"><button class="btn sm primary" onclick="refreshSteps()">${native?'Sync':'Set'}</button>${native?'':`<button class="btn sm" onclick="const v=prompt('Steps today');if(v)habitSet('${t.id}',Number(v))">Edit</button>`}</div>`:`<div class="cnt"><button class="btn" onclick="habitAdd('${t.id}',-1)">−</button><button class="btn primary" onclick="habitAdd('${t.id}',1)">+</button></div>`;
+    const detail=t.auto?(native?(S.stepsStatus||'from Health Connect'):'enter manually here; syncs automatically in the installed app'):`${t.perUnit?t.perUnit+' XP each, ':''}+${t.bonus} at target`;
+    return `<div class="trk"><div class="n" style="${t.auto?'font-size:22px':''}">${t.auto?fmt(c):c}</div><div style="flex:1"><b>${t.name}</b><div class="muted" style="font-size:12px">${t.auto?fmt(c):c} / ${t.auto?fmt(t.target):t.target} ${t.unit}${c>=t.target?' ✓':''} · ${detail} · ${t.primary}</div><div class="bar"><i style="width:${Math.min(100,c/t.target*100)}%"></i></div></div>${ctl}</div>`;}).join('');
 }
 const SKILL_TREE=[
   {id:'k1',sub:'Strength',name:'Carry the shopping home on foot',diff:'easy'},{id:'k2',sub:'Fitness',name:'Take the stairs all day, no lifts',diff:'medium'},{id:'k3',sub:'Flexibility',name:'10-minute full-body stretch',diff:'easy'},{id:'k4',sub:'Aesthetic',name:'Full skincare / grooming routine',diff:'easy'},{id:'k5',sub:'Balance',name:'Balance on one leg while brushing teeth',diff:'easy'},
@@ -655,12 +696,14 @@ const AUTO_GOALS=[
   {id:'w_teeth',period:'week',name:'Brush & floss twice a day, 7 days',target:7,xp:300,primary:'Longevity',prog:f=>habitDaysIn('teeth',f)},
   {id:'w_water',period:'week',name:'Water · 56 cups',target:56,xp:300,primary:'Nutrition',prog:f=>habitSumIn('water',f)},
   {id:'w_stairs',period:'week',name:'Stairs · 100 flights',target:100,xp:250,primary:'Fitness',prog:f=>habitSumIn('stairs',f)},
+  {id:'w_steps',period:'week',name:'70,000 steps',target:70000,xp:350,primary:'Fitness',prog:f=>habitSumIn('steps',f)},
   {id:'w_flaw',period:'week',name:'5 flawless days',target:5,xp:600,primary:'Self-Discipline',prog:f=>flawlessIn(f)},
   {id:'m_bad',period:'month',name:'Badminton 12 sessions',target:12,xp:1500,primary:'Fitness',prog:f=>sessionsIn('badminton',f)},
   {id:'m_pu',period:'month',name:()=>'Push-ups · 20× daily target',target:()=>puTarget()*20,xp:1200,primary:'Strength',prog:f=>amountIn('pushups',f)},
   {id:'m_run',period:'month',name:'Run 60 km',target:60,xp:1500,primary:'Fitness',prog:f=>amountIn('run',f)},
   {id:'m_eat',period:'month',name:'Clean eating · 50 healthy meals',target:50,xp:1800,primary:'Nutrition',prog:f=>mealsIn(f)},
   {id:'m_teeth',period:'month',name:'Brush & floss twice a day, 28 days',target:28,xp:1000,primary:'Longevity',prog:f=>habitDaysIn('teeth',f)},
+  {id:'m_steps',period:'month',name:'300,000 steps',target:300000,xp:1400,primary:'Fitness',prog:f=>habitSumIn('steps',f)},
   {id:'m_flaw',period:'month',name:'20 flawless days',target:20,xp:2500,primary:'Self-Discipline',prog:f=>flawlessIn(f)},
   {id:'m_backup',period:'month',name:'Export a backup',target:1,xp:300,primary:'Self-Discipline',prog:f=>(S.backups||[]).filter(f).length},
 ];
@@ -675,7 +718,7 @@ function manualAdd(id,delta){ const g=S.manualGoals.find(x=>x.id===id); const ke
 function delGoal(id){ if(!confirm('Remove this task?')) return; S.manualGoals=S.manualGoals.filter(g=>g.id!==id); save(); render(); }
 function renderGoals(){
   const wk=weekKey(); document.getElementById('weekLabel').textContent=wk+' → '+addDays(wk,6); document.getElementById('monthLabel').textContent=monthKey();
-  const auto=p=>AUTO_GOALS.filter(g=>g.period===p).map(g=>{const v=g.prog(periodFilter(p)), t=gval(g.target), done=!!S.goalsDone[g.id+'|'+periodKey(p)]; return `<div class="goal ${done?'done':''}"><div class="row"><b>${esc(gval(g.name))}</b><span class="${done?'ok':'muted'}" style="font-size:13px">${done?'Claimed +'+fmt(g.xp):'+'+fmt(g.xp)+' XP'}</span></div><div class="bar"><i style="width:${Math.min(100,v/t*100)}%"></i></div><div class="muted" style="font-size:12px">${Math.round(v*10)/10} / ${t} · ${g.primary}</div></div>`;}).join('');
+  const auto=p=>AUTO_GOALS.filter(g=>g.period===p).map(g=>{const v=g.prog(periodFilter(p)), t=gval(g.target), done=!!S.goalsDone[g.id+'|'+periodKey(p)]; return `<div class="goal ${done?'done':''}"><div class="row"><b>${esc(gval(g.name))}</b><span class="${done?'ok':'muted'}" style="font-size:13px">${done?'Claimed +'+fmt(g.xp):'+'+fmt(g.xp)+' XP'}</span></div><div class="bar"><i style="width:${Math.min(100,v/t*100)}%"></i></div><div class="muted" style="font-size:12px">${fmt(Math.round(v*10)/10)} / ${fmt(t)} · ${g.primary}</div></div>`;}).join('');
   const manual=p=>{const list=S.manualGoals.filter(g=>g.period===p); return list.length?list.map(g=>{const key=g.id+'|'+periodKey(p); const c=S.manualCounts[key]||0, done=!!S.goalsDone[key]; return `<div class="goal ${done?'done':''}"><div class="row"><b>${esc(g.name)}</b><span class="${done?'ok':'muted'}" style="font-size:13px">${done?'Claimed +'+fmt(g.xp):'+'+fmt(g.xp)+' XP'}</span></div><div class="row" style="margin-top:4px"><span class="muted" style="font-size:12px">${c} / ${g.target} · ${g.primary}</span><span class="cnt" style="display:flex;gap:6px"><button class="btn sm" onclick="manualAdd('${g.id}',-1)">−</button><button class="btn sm primary" onclick="manualAdd('${g.id}',1)">+</button><button class="btn sm" onclick="delGoal('${g.id}')">×</button></span></div></div>`;}).join(''):'<div class="empty">Nothing yet.</div>';};
   document.getElementById('weekAuto').innerHTML=auto('week'); document.getElementById('monthAuto').innerHTML=auto('month');
   document.getElementById('weekManual').innerHTML=manual('week'); document.getElementById('monthManual').innerHTML=manual('month');
@@ -692,23 +735,36 @@ function logSet(){
   const streak=Math.max(0,...S.tasks.filter(t=>t.link&&t.link.ex===ex.id).map(t=>t.streak));
   const xp=Math.round(setXP(ex,variant,amt)*streakMult(streak)*weakMult()); const d=today(); const sid='s'+Date.now();
   const b=charLevel(S).lvl, bs=skillLevel(S,SUB_SKILL[ex.primary]).lvl;
-  S.sets.push({id:sid,date:d,ex:ex.id,variant,amt,xp});
+  S.sets.push({id:sid,date:d,ex:ex.id,variant:ex.sides?variant+' · '+(window._side||ex.sides[0]):variant,amt,xp});
   S.log.push({task:sid,date:d,sub:ex.primary,xp}); (ex.secondary||[]).slice(0,3).forEach(sub=>S.log.push({task:sid,date:d,sub,xp:Math.round(xp*.25)}));
-  recomputeRecap(d); { const L=subLevel(S,ex.primary); sys('Set logged',amt+' '+ex.unit+' · '+variant+' · +'+xp+' XP → '+ex.primary+' Lv '+L.lvl+' · '+fmt(L.into)+'/'+fmt(L.need)); }
-  // auto-complete linked daily quests
-  for(const t of S.tasks){ if(t.link&&t.link.ex===ex.id&&t.last!==d&&dayTotal(ex.id)>=targetOf(t)){ t.prevLast=t.last; t.prevStreak=t.streak; t.streak=(t.last===prevActiveDay(d))?t.streak+1:1; t.best=Math.max(t.best,t.streak); t.last=d; sys('Quest complete','"'+t.name+'" reached by your logged sets.'); if([10,30,66,100,365].includes(t.streak)){S.tokens++;S.tokensEarned++;} } }
-  checkLevels(b,bs,SUB_SKILL[ex.primary]); document.getElementById('ex-amt').value=''; save(); checkAch(); render();
+  recomputeRecap(d); { const L=subLevel(S,ex.primary); sys('Set logged',amt+' '+ex.unit+' · '+(ex.sides?variant+' '+(window._side||ex.sides[0]):variant)+' · +'+xp+' XP → '+ex.primary+' Lv '+L.lvl+' · '+fmt(L.into)+'/'+fmt(L.need)); }
+  completeLinked(ex.id);
+  checkLevels(b,bs,SUB_SKILL[ex.primary]); if(ex.sides){ const i=ex.sides.indexOf(window._side||ex.sides[0]); window._side=ex.sides[(i+1)%ex.sides.length]; } save(); checkAch(); render();
 }
 function delSet(id){ const st=S.sets.find(x=>x.id===id); if(!st) return; S.sets=S.sets.filter(x=>x.id!==id); S.log=S.log.filter(e=>e.task!==id); recomputeRecap(st.date); save(); render(); }
+function logSetDirect(ex,variant,amt,side){ const d=today(); const streak=Math.max(0,...S.tasks.filter(t=>t.link&&t.link.ex===ex.id).map(t=>t.streak)); const xp=Math.round(setXP(ex,variant,amt)*streakMult(streak)*weakMult()); const sid='s'+Date.now()+Math.random().toString(36).slice(2,5);
+  S.sets.push({id:sid,date:d,ex:ex.id,variant:ex.sides?variant+' · '+(side||ex.sides[0]):variant,amt,xp}); S.log.push({task:sid,date:d,sub:ex.primary,xp}); (ex.secondary||[]).slice(0,3).forEach(sub=>S.log.push({task:sid,date:d,sub,xp:Math.round(xp*.25)})); completeLinked(ex.id); return xp; }
+function logWorkout(id){ const w=S.workouts.find(x=>x.id===id); if(!w) return; const b=charLevel(S).lvl; let total=0; for(const it of w.items){ const ex=exById(it.ex); if(!ex) continue; const amt=it.amt*(w.rounds||1); if(ex.sides){ const half=Math.ceil(amt/2); total+=logSetDirect(ex,it.variant,half,ex.sides[0]); total+=logSetDirect(ex,it.variant,amt-half,ex.sides[1]); } else total+=logSetDirect(ex,it.variant,amt); }
+  recomputeRecap(today()); sys('Workout logged',w.name+' · '+(w.rounds||1)+' rounds · +'+fmt(total)+' XP'); checkLevels(b,skillLevel(S,'Physical').lvl,'Physical'); save(); checkAch(); render(); }
+function delWorkout(id){ if(!confirm('Remove this workout?')) return; S.workouts=S.workouts.filter(w=>w.id!==id); save(); render(); }
+function renderWorkouts(){ document.getElementById('workoutList').innerHTML=S.workouts.length?S.workouts.map(w=>`<div class="excard"><div class="row"><b>${esc(w.name)}</b><span class="muted" style="font-size:12px">${w.rounds} rounds</span></div><div class="muted" style="font-size:12px;margin:4px 0 6px">${w.items.map(it=>{const ex=exById(it.ex);return ex?it.amt+' × '+ex.name+' ('+it.variant+')':'';}).filter(Boolean).join(' · ')}</div><div class="row"><span class="muted" style="font-size:12px">≈ ${fmt(w.items.reduce((a,it)=>{const ex=exById(it.ex);return a+(ex?setXP(ex,it.variant,it.amt*w.rounds):0);},0))} XP</span><span><button class="btn sm primary" onclick="logWorkout('${w.id}')">Log workout</button> <button class="btn sm" onclick="openWorkoutModal('${w.id}')">Edit</button> <button class="btn sm" onclick="delWorkout('${w.id}')">×</button></span></div></div>`).join(''):'<div class="empty">No saved workouts yet.</div>'; }
+function workoutRow(it={}){ const opts=allExercises().map(e=>`<option value="${e.id}" ${it.ex===e.id?'selected':''}>${esc(e.name)}</option>`).join(''); return `<div class="row wrow" style="gap:4px;margin-bottom:6px"><select class="w-ex" onchange="wVariants(this)" style="flex:2">${opts}</select><select class="w-var" style="flex:1"></select><input class="w-amt" type="number" min="0" placeholder="reps" value="${it.amt||''}" style="max-width:70px"><button type="button" class="btn sm" onclick="this.parentElement.remove()">×</button></div>`; }
+function wVariants(sel,chosen){ const ex=exById(sel.value); const v=sel.parentElement.querySelector('.w-var'); v.innerHTML=Object.keys(ex.variants||{Standard:1}).map(x=>`<option ${x===chosen?'selected':''}>${esc(x)}</option>`).join(''); }
+function openWorkoutModal(id){ const w=id?S.workouts.find(x=>x.id===id):{name:'',rounds:1,items:[{},{},{}]};
+  document.getElementById('modalBody').innerHTML=`<h2>${id?'Edit workout':'New workout'}</h2><label>Name</label><input id="m-wname" value="${esc(w.name)}" placeholder="e.g. 20-min EMOM"><label>Rounds</label><input id="m-wrounds" type="number" min="1" value="${w.rounds||1}"><label>Exercises (amount per round)</label><div id="m-wrows">${w.items.map(workoutRow).join('')}</div><button type="button" class="btn sm" onclick="document.getElementById('m-wrows').insertAdjacentHTML('beforeend',workoutRow());const r=document.getElementById('m-wrows').lastElementChild;wVariants(r.querySelector('.w-ex'))">+ exercise</button><div class="row" style="margin-top:16px;gap:8px"><button class="btn primary" onclick="saveWorkout('${id||''}')">Save</button><button class="btn" onclick="closeModal()">Cancel</button></div>`;
+  [...document.querySelectorAll('#m-wrows .wrow')].forEach((r,i)=>wVariants(r.querySelector('.w-ex'),(w.items[i]||{}).variant)); document.getElementById('modal').classList.add('on'); }
+function saveWorkout(id){ const name=document.getElementById('m-wname').value.trim(); if(!name) return; const items=[...document.querySelectorAll('#m-wrows .wrow')].map(r=>({ex:r.querySelector('.w-ex').value,variant:r.querySelector('.w-var').value,amt:Number(r.querySelector('.w-amt').value)||0})).filter(i=>i.amt>0); if(!items.length) return;
+  const o={name,rounds:Math.max(1,Number(document.getElementById('m-wrounds').value)||1),items}; if(id) Object.assign(S.workouts.find(x=>x.id===id),o); else S.workouts.push({id:'w'+Date.now(),...o}); save(); closeModal(); render(); }
 function renderTrainForm(){
   const sel=document.getElementById('ex-sel'); const cur=sel.value; sel.innerHTML=allExercises().map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join(''); if(cur) sel.value=cur;
   const ex=exById(sel.value); const vs=document.getElementById('ex-var'); const cv=vs.value; vs.innerHTML=Object.keys(ex.variants||{Standard:1}).map(v=>`<option ${v===cv?'selected':''}>${esc(v)}</option>`).join('');
+  const sw=document.getElementById('ex-sidewrap'); if(ex.sides){ sw.style.display='block'; const cur=window._side&&ex.sides.includes(window._side)?window._side:ex.sides[0]; window._side=cur; document.getElementById('ex-side').innerHTML=ex.sides.map(x=>`<button type="button" class="${x===cur?'on':''}" onclick="window._side='${x}';renderTrainForm()">${x}</button>`).join(''); } else { sw.style.display='none'; }
   document.getElementById('ex-amtlabel').textContent='Amount ('+ex.unit+')'; document.getElementById('ex-amt').step=ex.unit==='km'?'0.1':'1';
   const amt=Number(document.getElementById('ex-amt').value)||0; const m=ex.variants?.[vs.value]??1;
   document.getElementById('ex-preview').textContent= amt?`${amt} ${ex.unit} × ${ex.xp} XP × ${m} (${vs.value}) = ${Math.round(setXP(ex,vs.value,amt))} XP → ${ex.primary}`:`${ex.xp} XP per ${ex.unit.replace(/s$/,'')} · ${vs.value} ×${m} · feeds ${ex.primary}`;
 }
 function renderTrain(){
-  renderTrainForm(); const d=today(); document.getElementById('trainDate').textContent=d;
+  renderTrainForm(); renderWorkouts(); const d=today(); document.getElementById('trainDate').textContent=d;
   const todays=S.sets.filter(x=>x.date===d); const byEx={}; todays.forEach(x=>{byEx[x.ex]=(byEx[x.ex]||0)+x.amt;});
   document.getElementById('todayTotals').innerHTML=Object.keys(byEx).length?Object.entries(byEx).map(([id,v])=>{const ex=exById(id); const t=S.tasks.find(t=>t.link&&t.link.ex===id);
     return `<div class="excard"><div class="row"><b>${esc(ex.name)}</b><span class="totals">${v} ${ex.unit}</span></div>${t?`<div class="bar"><i style="width:${Math.min(100,v/targetOf(t)*100)}%"></i></div><div class="muted" style="font-size:12px">${t.name}: ${v} / ${targetOf(t)} ${ex.unit}${v>=targetOf(t)?' ✓':''}</div>`:''}</div>`;}).join(''):'<div class="empty">Nothing logged yet today. First set?</div>';
@@ -735,16 +791,16 @@ async function setPin(){ const v=document.getElementById('pinIn').value.trim(); 
 function lockScreen(){ if(!S.pin||sessionStorage.getItem('sys-unlocked')===S.pin) return; const o=document.createElement('div'); o.className='overlay on'; o.id='lock'; o.style.zIndex=20; document.body.classList.add('locked'); o.innerHTML='<div class="win"><h2>Enter PIN</h2><input type="password" inputmode="numeric" maxlength="6" id="lockIn" autofocus><div class="row" style="margin-top:12px"><span class="muted" id="lockMsg"></span><button class="btn primary" id="lockBtn">Unlock</button></div></div>'; document.body.appendChild(o);
   const go=async()=>{ const h=await hashPin(document.getElementById('lockIn').value); if(h===S.pin){ sessionStorage.setItem('sys-unlocked',S.pin); o.remove(); document.body.classList.remove('locked'); } else { document.getElementById('lockMsg').textContent='Wrong PIN'; document.getElementById('lockIn').value=''; } };
   document.getElementById('lockBtn').onclick=go; document.getElementById('lockIn').onkeydown=e=>{ if(e.key==='Enter') go(); }; }
-function checkAch(){ checkGoals(); for(const a of ACH){ if(!S.ach[a.id]&&a.test(S)){ S.ach[a.id]=today(); sys('Achievement unlocked',a.name+' — '+a.q); } } save(); }
+function checkAch(){ checkGoals(); checkBoss(); checkEmergency(); for(const a of ACH){ if(!S.ach[a.id]&&a.test(S)){ S.ach[a.id]=today(); sys('Achievement unlocked',a.name+' — '+a.q); if(TITLES[a.id]&&!S.titles.includes(TITLES[a.id])){ S.titles.push(TITLES[a.id]); S.title=TITLES[a.id]; sys('Title acquired','"'+TITLES[a.id]+'" — now shown on your status window.'); } } } save(); }
 const QUIET=new Set(['Set logged','Action done','Added to daily quests','Already daily','Reading quest added','Session logged','PIN set','PIN removed','Restored','Brush & floss','Water','Stairs','Quest complete']);
-function logEvent(h,p){ S.events=S.events||[]; S.events.push({d:today(),t:new Date().toTimeString().slice(0,5),h,p}); if(S.events.length>400) S.events=S.events.slice(-400); }
-function sys(h,p){ if(!QUIET.has(h)) logEvent(h,p); const t=document.getElementById('toast'); const e=document.createElement('div'); e.className='sysmsg'; e.innerHTML='<h3>'+h+'</h3><p>'+esc(p)+'</p>'; t.appendChild(e); setTimeout(()=>e.remove(),4200); }
+function logEvent(h,p){ S.events=S.events||[]; S.ui=S.ui||{open:{trkWin:true,questWin:true}}; S.titles=S.titles||['Newly awakened']; S.boxes=S.boxes||0; S.emergency=S.emergency||null; S.boss=S.boss||null; S.workouts=S.workouts||[{id:'w1',name:'20-min kettlebell EMOM',rounds:4,items:[{ex:'kb_clean',variant:'16 kg',amt:15},{ex:'kb_swing',variant:'16 kg',amt:10},{ex:'pushups',variant:'Standard',amt:15},{ex:'kb_thruster',variant:'16 kg',amt:10},{ex:'kb_highpull',variant:'16 kg',amt:15}]}]; S.events.push({d:today(),t:new Date().toTimeString().slice(0,5),h,p}); if(S.events.length>400) S.events=S.events.slice(-400); }
+function sys(h,p){ if(!QUIET.has(h)) logEvent(h,p); try{ if(navigator.vibrate&&!QUIET.has(h)) navigator.vibrate(h.match(/Level up|Rank|Achievement|Boss|Emergency|Title|Reward/)?[40,60,40]:30); }catch(e){} const t=document.getElementById('toast'); const e=document.createElement('div'); e.className='sysmsg'; e.innerHTML='<h3><span style="color:var(--muted);font-size:12px;letter-spacing:.2em">[SYSTEM] </span>'+h+'</h3><p>'+esc(p)+'</p>'; t.appendChild(e); setTimeout(()=>e.remove(),4200); }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 /* ========= RENDER ========= */
 let ratingMode='current';
 function setRating(m,btn){ ratingMode=m; btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); renderStats(); }
-function render(){ renderTop(); renderPlayer(); renderBanner(); renderStrip(); renderEvents(); renderQuests(); renderTrackers(); renderSkillTree(); renderGoals(); renderTrain(); renderStats(); renderProgress(); renderAch(); renderLearn(); }
+function render(){ applyWins(); renderTop(); renderPlayer(); renderBoss(); renderEmergency(); renderBanner(); renderStrip(); renderEvents(); renderQuests(); renderTrackers(); renderSkillTree(); renderGoals(); renderTrain(); renderStats(); renderProgress(); renderAch(); renderLearn(); }
 function renderPlayer(){
   const cl=charLevel(S); const r=rankOf(cl.lvl); const nextR=nextRank(cl.lvl);
   const di=dayIndex();
@@ -759,6 +815,8 @@ function renderPlayer(){
     <div style="margin-top:12px">${Object.keys(SKILLS).map(k=>{const L=skillLevel(S,k); const d1=(S.day1||{})[k]||1; return `<div class="statrow"><b>${k.toUpperCase()}</b><span class="v">${L.lvl}${L.lvl>d1?`<small>+${L.lvl-d1}</small>`:''}</span></div>`;}).join('')}</div>
     <div class="muted" style="font-size:12px;margin-top:10px">Best streak ${bestStreak(S)} days · ${Object.keys(S.ach).length} achievements · ${fmt(charXP(S))} lifetime XP</div>`;
 }
+function toggleWin(id){ S.ui.open=S.ui.open||{}; S.ui.open[id]=!S.ui.open[id]; save(); applyWins(); }
+function applyWins(){ for(const id of ['trkWin','questWin','treeWin','projWin']){ const el=document.getElementById(id); if(el) el.classList.toggle('open',!!(S.ui.open||{})[id]); } }
 function renderStrip(){ const d=today(); const done=S.tasks.filter(t=>t.last===d).length; const teaser=S.log.some(e=>e.task==='teaser'&&e.date===d);
   document.getElementById('strip').innerHTML=`<div><b>${done}/${S.tasks.length}</b><span>quests</span></div><div><b>${fmt(S.recap[d]||0)}</b><span>XP today</span></div><div><b style="color:var(--hp)">${S.hp}</b><span>HP</span></div><div><b style="color:${teaser?'var(--ok)':'var(--muted)'}">${teaser?'✓':'–'}</b><span>teaser</span></div>`;
   const rest=S.restDays[d]; document.getElementById('restInfo').textContent=rest?'Rest day — streaks and HP protected today.':restUsedThisWeek()?'Rest day used this week (resets Monday).':'1 rest day available this week.'; document.getElementById('restBtn').disabled=!!rest||restUsedThisWeek(); }
@@ -766,6 +824,37 @@ function renderBanner(){ const last=(S.backups||[]).slice(-1)[0]; const days=las
   document.getElementById('banner').innerHTML=show?`<div class="banner"><span>${days===null?'No backup yet.':'Last backup '+days+' days ago.'} Export one so a lost phone doesn't mean a lost hunter.</span><button class="btn sm" onclick="exportData()">Export</button></div>`:''; }
 function syncReminder(){ try{ if(window.Android&&Android.setReminder){ const d=today(); const left=S.tasks.length-S.tasks.filter(t=>t.last===d).length; const [h,m]=(S.reminder.time||'21:00').split(':').map(Number); Android.setReminder(S.reminder.on?1:0,h,m,'The System','Daily quests close at midnight. '+left+' still open when you last checked.'); } }catch(e){} }
 function markBookRead(t){ S.booksRead[t]=today(); sys('Book finished',t+' · +120 XP → Knowledge'); S.log.push({task:'book',date:today(),sub:'Knowledge',xp:Math.round(120*weakMult())}); recomputeRecap(today()); save(); checkAch(); render(); }
+function openBox(){ if(S.boxes<=0) return; S.boxes--; const r=Math.random(); let msg;
+  if(r<.35){ S.tokens++; S.tokensEarned++; msg='Shield token ×1'; }
+  else if(r<.85){ const k=Object.keys(SKILLS)[Math.floor(Math.random()*5)]; const sub=SKILLS[k][Math.floor(Math.random()*SKILLS[k].length)]; const xp=100+Math.floor(Math.random()*201); S.log.push({task:'box',date:today(),sub,xp}); recomputeRecap(today()); msg='XP burst: +'+xp+' → '+sub; }
+  else { const rare=['The Lucky','Gate Walker','Shadow Touched','The Relentless','Night Hunter']; const t=rare[Math.floor(Math.random()*rare.length)]; if(!S.titles.includes(t)) S.titles.push(t); S.title=t; msg='Rare title: "'+t+'"'; }
+  sys('Reward box opened',msg); save(); checkAch(); render(); }
+const EMERGENCIES=[
+  {n:'Push-up surge',d:'Log 50 push-ups (any variation) before it expires.',xp:120,test:()=>dayTotal('pushups')>=50+(S.emergency?.base||0)},
+  {n:'Hydration order',d:'Reach 8 cups of water before it expires.',xp:60,test:()=>habitCount('water')>=8},
+  {n:'Stair gate',d:'Climb 15 flights of stairs before it expires.',xp:90,test:()=>habitCount('stairs')>=15+(S.emergency?.base||0)},
+  {n:'March',d:'Hit 8,000 steps before it expires.',xp:100,test:()=>habitCount('steps')>=8000},
+  {n:'Clear the board',d:'Complete 8 daily quests before it expires.',xp:150,test:()=>S.tasks.filter(t=>t.last===today()).length>=8},
+  {n:'Mind gate',d:'Complete today\'s brain teaser before it expires.',xp:70,test:()=>S.log.some(e=>e.task==='teaser'&&e.date===today())},
+  {n:'Iron minute',d:'Log a plank of at least 90 seconds before it expires.',xp:80,test:()=>S.sets.some(x=>x.ex==='plank'&&x.date===today()&&x.amt>=90)},
+  {n:'Three actions',d:'Do three Skill tree actions before it expires.',xp:110,test:()=>S.log.filter(e=>e.task.startsWith('sk:')&&e.date===today()).length>=3},
+];
+function spawnEmergency(){ const d=today(); if(S.emergency&&S.emergency.date===d) return; let h=0; for(const c of d) h=(h*33+c.charCodeAt(0))>>>0; if(h%100>=40||dayIndex()<2){ if(S.emergency&&S.emergency.date!==d) S.emergency=null; return; }
+  const e=EMERGENCIES[h%EMERGENCIES.length]; const hours=3+(h%3); S.emergency={id:h%EMERGENCIES.length,date:d,expires:Date.now()+hours*3600e3,done:false,base:e.n==='Push-up surge'?dayTotal('pushups'):e.n==='Stair gate'?habitCount('stairs'):0};
+  sys('Emergency quest','"'+e.n+'" — '+e.d+' Expires in '+hours+' h. Reward '+e.xp+' XP + reward box.'); save(); }
+function checkEmergency(){ const E=S.emergency; if(!E||E.done||E.date!==today()) return; const e=EMERGENCIES[E.id]; if(Date.now()>E.expires){ E.done='expired'; sys('Emergency quest failed','"'+e.n+'" expired. The System does not wait.'); save(); return; }
+  if(e.test()){ E.done=true; const xp=Math.round(e.xp*weakMult()); S.log.push({task:'emerg',date:today(),sub:'Grit',xp}); recomputeRecap(today()); S.boxes++; sys('Emergency quest cleared','"'+e.n+'" · +'+xp+' XP → Grit · +1 reward box'); save(); } }
+function renderEmergency(){ const E=S.emergency; let el=document.getElementById('emergBox'); if(!el){ el=document.createElement('div'); el.id='emergBox'; document.getElementById('strip').insertAdjacentElement('afterend',el); }
+  if(!E||E.date!==today()){ el.innerHTML=''; return; } const e=EMERGENCIES[E.id]; const left=Math.max(0,E.expires-Date.now()); const mins=Math.floor(left/60000);
+  el.innerHTML=`<div class="emerg"><h2>${E.done===true?'Emergency quest cleared':E.done==='expired'?'Emergency quest expired':'Emergency quest'}</h2><div><b>${esc(e.n)}</b> — ${esc(e.d)}</div><div class="row muted" style="font-size:12px;margin-top:4px"><span>${E.done===true?'Reward claimed':E.done==='expired'?'Failed':'Expires in '+Math.floor(mins/60)+' h '+(mins%60)+' min'}</span><span>${e.xp} XP + reward box</span></div></div>`; }
+const BOSSES=['Rusted Knight','The Hollow Stag','Ash Serpent','Mire Colossus','Glass Wraith','The Pale Warden','Thunder Boar','Veil Weaver','Iron Hierophant','The Drowned King'];
+function ensureBoss(){ const wk=weekKey(); if(S.boss&&S.boss.week===wk) return; const avg=avgDaily(14); const n=Object.keys(S.goalsDone).filter(k=>k.startsWith('boss|')).length; const hp=Math.max(1500,Math.round(avg*7*1.15/50)*50);
+  S.boss={week:wk,name:BOSSES[n%BOSSES.length]+(n>=BOSSES.length?' '+roman(Math.floor(n/BOSSES.length)+1):''),maxHp:hp,defeated:false}; sys('Gate opened','Weekly boss: '+S.boss.name+' · '+fmt(hp)+' HP. Every XP you earn this week is damage. Defeat it by Sunday.'); save(); }
+function bossDamage(){ let d=0; const wk=weekKey(); for(let i=0;i<7;i++) d+=S.recap[addDays(wk,i)]||0; return d; }
+function checkBoss(){ if(!S.boss) return; if(!S.boss.defeated&&bossDamage()>=S.boss.maxHp){ S.boss.defeated=true; S.goalsDone['boss|'+S.boss.week]=today(); S.tokens++; S.tokensEarned++; S.boxes++; const low=Object.keys(SKILLS).sort((a,b)=>skillXP(S,a)-skillXP(S,b))[0]; const xp=Math.round(300*weakMult()); S.log.push({task:'boss',date:today(),sub:SKILLS[low][0],xp}); recomputeRecap(today()); sys('Boss defeated',S.boss.name+' falls. +1 shield, +1 reward box, +'+xp+' XP → '+low+'.'); save(); } }
+function renderBoss(){ let el=document.getElementById('bossBox'); if(!el){ el=document.createElement('div'); el.id='bossBox'; document.getElementById('statwin').insertAdjacentElement('afterend',el); el.style.marginTop='18px'; }
+  if(!S.boss){ el.innerHTML=''; return; } const dmg=Math.min(S.boss.maxHp,bossDamage()); const left=S.boss.maxHp-dmg; const daysLeft=6-Math.floor((new Date(today()+'T12:00:00')-new Date(S.boss.week+'T12:00:00'))/864e5);
+  el.innerHTML=`<div class="boss"><h2>${S.boss.defeated?'Boss defeated':'Weekly boss'} <small style="font-family:Inter;font-size:12px;color:var(--muted);font-weight:500;letter-spacing:0;margin-left:8px">${S.boss.defeated?'gate closed until Monday':daysLeft+' day'+(daysLeft===1?'':'s')+' left'}</small></h2><div class="row"><b class="disp" style="font-size:22px;color:#fff">${esc(S.boss.name)}</b><span class="disp" style="font-size:18px;color:var(--hp)">${fmt(left)} / ${fmt(S.boss.maxHp)} HP</span></div><div class="bar"><i style="width:${100-dmg/S.boss.maxHp*100}%"></i></div><div class="row muted" style="font-size:12px"><span>Your XP this week is its damage taken</span><span>Reward: shield + box + 300 XP</span></div>${S.boxes>0?`<div class="row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)"><span><span class="box">🎁</span> <b>${S.boxes}</b> reward box${S.boxes>1?'es':''}</span><button class="btn sm primary" onclick="openBox()">Open one</button></div>`:''}</div>`; }
 function renderTop(){
   const di=dayIndex(); const cl=charLevel(S);
   document.getElementById('dayTitle').textContent= di<=66 ? 'Day '+di+' / 66' : 'Day '+di;
@@ -782,7 +871,7 @@ function renderQuests(){
     <div class="task ${t.last===d?'done':''}">
       <button class="chk" aria-label="Complete ${esc(t.name)}" onclick="toggleTask('${t.id}')">${t.last===d?'✓':''}</button>
       <div style="flex:1;min-width:0"><div class="name">${esc(t.name)}</div>
-        <div class="meta"><span class="diff ${t.diff}">${t.link?'XP from Train log':DIFF[t.diff].label+' · '+DIFF[t.diff].xp+' XP'}</span><span>${esc(t.primary)}</span>${t.link?`<span>${dayTotal(t.link.ex)} / ${targetOf(t)} ${exById(t.link.ex)?.unit||''} logged${t.link.scale?' · grows with '+t.link.scale.stat:''}</span>`:''}</div></div>
+        <div class="meta"><span class="diff ${t.diff}">${t.link?(t.link.ex.startsWith('tracker:')?'XP from tracker':'XP from Train log'):DIFF[t.diff].label+' · '+DIFF[t.diff].xp+' XP'}</span><span>${esc(t.primary)}</span>${t.link?`<span>${linkTotal(t)} / ${targetOf(t)} ${linkUnit(t)} logged${t.link.scale?' · grows with '+t.link.scale.stat:''}</span>`:''}</div></div>
       <div class="streak" title="streak">${t.streak>0?t.streak+'🔥':''}</div>
       <button class="btn sm" style="padding:3px 8px" onclick="openTaskModal('${t.id}')">Edit</button>
     </div>`).join(''):'<div class="empty">No quests yet. Add one to begin.</div>';
@@ -841,7 +930,7 @@ function renderAch(){
 function renderLearn(){
   const di=Math.max(0,dayIndex()-1); const unread=BOOKS.filter(x=>!S.booksRead[x.t]); const pool=unread.length?unread:BOOKS; const b=pool[di%pool.length]; const bi=BOOKS.indexOf(b);
   document.getElementById('learnBox').innerHTML=`<h2>Daily learning <small>day ${di+1} of the arc</small></h2><h3>${esc(b.t)}</h3><div class="by">${esc(b.a)}</div><p><b>Why read it:</b> ${esc(b.why)}</p><p><b>What you'll take from it:</b></p><ul>${b.pts.map(p=>`<li>${esc(p)}</li>`).join('')}</ul><div class="row" style="margin-top:8px"><span class="muted">Like the look of it?</span>${S.quests.some(q=>q.book===b.t)?'<span class="ok">Added as a quest</span>':`<button class="btn sm" onclick="addBookQuest(${bi})">Add as a reading quest</button>`} ${S.booksRead[b.t]?'<span class="muted">· read</span>':`<button class="btn sm" onclick="markBookRead('${esc(b.t).replace(/'/g,"\\'")}')">Already read it</button>`}</div><p class="muted">Short original summaries, one per day, rotating through ${BOOKS.length} books; ones you mark as read drop out of the rotation.</p>`;
-  document.getElementById('nameIn').value=S.name; document.getElementById('titleIn').value=S.title; document.getElementById('thrIn').value=S.threshold||6; document.getElementById('remOn').value=S.reminder.on?'1':'0'; document.getElementById('remTime').value=S.reminder.time||'21:00'; document.getElementById('pinIn').placeholder=S.pin?'PIN set — enter new, or blank to remove':'4–6 digits, blank to remove';
+  document.getElementById('nameIn').value=S.name; document.getElementById('titleIn').innerHTML=S.titles.map(t=>`<option ${t===S.title?'selected':''}>${esc(t)}</option>`).join(''); document.getElementById('thrIn').value=S.threshold||6; document.getElementById('remOn').value=S.reminder.on?'1':'0'; document.getElementById('remTime').value=S.reminder.time||'21:00'; document.getElementById('pinIn').placeholder=S.pin?'PIN set — enter new, or blank to remove':'4–6 digits, blank to remove';
   document.getElementById('tierSlots').innerHTML='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">'+AVATAR_TIERS.map((t,i)=>`<div style="text-align:center"><div class="card ${t.rarity}" style="width:100%;height:96px;margin:0 auto" onclick="const f=document.getElementById('avatarFile');f.dataset.tier='${t.id}';f.click()"><div class="pic" style="font-size:22px;${S.avatars[t.id]?`background-image:url(${S.avatars[t.id]})`:''}">${S.avatars[t.id]?'':'+'}</div></div><div class="disp" style="font-size:13px;margin-top:3px">${i+1}. ${t.name}</div><div class="muted" style="font-size:11px">${t.note}</div></div>`).join('')+'</div><p class="muted" style="font-size:12px;margin:8px 0 0">Tap a card to set its image. Empty cards show the previous form.</p>'; document.getElementById('startIn').value=S.start;
 }
 
@@ -854,8 +943,8 @@ function openTaskModal(id){
     <label>Difficulty</label><select id="m-diff"><option value="easy" ${t.diff==='easy'?'selected':''}>Easy · 8 XP</option><option value="medium" ${t.diff==='medium'?'selected':''}>Medium · 38 XP</option><option value="hard" ${t.diff==='hard'?'selected':''}>Hard · 150 XP</option></select>
     <label>Primary subcategory (100% XP)</label><select id="m-prim">${ALL_SUBS.map(s=>`<option ${s===t.primary?'selected':''}>${s}</option>`).join('')}</select>
     <label>Secondary subcategories (25% XP each, up to 3)</label><div class="chips" id="m-sec">${subChips(t.secondary||[],true,t.primary)}</div>
-    <label>Link to a Train exercise <span class="muted">(quest ticks itself when today's logged total hits the target; XP then comes from the sets)</span></label>
-    <div class="row" style="gap:8px"><select id="m-link"><option value="">None</option>${allExercises().map(e=>`<option value="${e.id}" ${t.link&&t.link.ex===e.id?'selected':''}>${esc(e.name)}</option>`).join('')}</select><input type="number" id="m-target" placeholder="Target" value="${t.link?t.link.target:''}" style="max-width:110px"></div>
+    <label>Link to a Train exercise or tracker <span class="muted">(quest ticks itself when today's logged total hits the target; XP then comes from the sets)</span></label>
+    <div class="row" style="gap:8px"><select id="m-link"><option value="">None</option>${allExercises().map(e=>`<option value="${e.id}" ${t.link&&t.link.ex===e.id?'selected':''}>${esc(e.name)}</option>`).join('')}${TRACKERS.map(x=>`<option value="tracker:${x.id}" ${t.link&&t.link.ex==='tracker:'+x.id?'selected':''}>Tracker: ${x.name} (${x.unit})</option>`).join('')}</select><input type="number" id="m-target" placeholder="Target" value="${t.link?t.link.target:''}" style="max-width:110px"></div>
     <label>Grow the target with a stat <span class="muted">(target = start + per-level × (stat level − 1), up to the max)</span></label>
     <div class="row" style="gap:6px"><select id="m-sstat"><option value="">Fixed target</option>${ALL_SUBS.map(s=>`<option ${t.link?.scale?.stat===s?'selected':''}>${s}</option>`).join('')}</select><input type="number" id="m-sper" placeholder="Per level" value="${t.link?.scale?.per??''}" style="max-width:90px"><input type="number" id="m-scap" placeholder="Max" value="${t.link?.scale?.cap??''}" style="max-width:80px"></div>
     ${t.link?.scale?`<div class="muted" style="font-size:12px;margin-top:4px">Current target: ${targetOf(t)} (${t.link.scale.stat} Lv ${subLevel(S,t.link.scale.stat).lvl})</div>`:''}
@@ -901,14 +990,14 @@ function closeModal(){ document.getElementById('modal').classList.remove('on'); 
 document.getElementById('modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
 
 /* ========= BACKUP ========= */
-function exportData(){ S.backups=S.backups||[]; S.events=S.events||[]; S.restDays=S.restDays||{}; S.booksRead=S.booksRead||{}; S.reminder=S.reminder||{on:true,time:'21:00'}; if(!S.backups.includes(today())) S.backups.push(today()); save(); const json=JSON.stringify(S,null,2); const fname='system-backup-'+today()+'.json'; if(window.Android&&Android.saveFile){ Android.saveFile(fname,json); } else { const blob=new Blob([json],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); } checkGoals(); save(); render(); sys('Backup exported','Keep the file somewhere safe. Monthly backup goal counted.'); }
+function exportData(){ S.backups=S.backups||[]; S.events=S.events||[]; S.ui=S.ui||{open:{trkWin:true,questWin:true}}; S.titles=S.titles||['Newly awakened']; S.boxes=S.boxes||0; S.emergency=S.emergency||null; S.boss=S.boss||null; S.workouts=S.workouts||[{id:'w1',name:'20-min kettlebell EMOM',rounds:4,items:[{ex:'kb_clean',variant:'16 kg',amt:15},{ex:'kb_swing',variant:'16 kg',amt:10},{ex:'pushups',variant:'Standard',amt:15},{ex:'kb_thruster',variant:'16 kg',amt:10},{ex:'kb_highpull',variant:'16 kg',amt:15}]}]; S.restDays=S.restDays||{}; S.booksRead=S.booksRead||{}; S.reminder=S.reminder||{on:true,time:'21:00'}; if(!S.backups.includes(today())) S.backups.push(today()); save(); const json=JSON.stringify(S,null,2); const fname='system-backup-'+today()+'.json'; if(window.Android&&Android.saveFile){ Android.saveFile(fname,json); } else { const blob=new Blob([json],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); } checkGoals(); save(); render(); sys('Backup exported','Keep the file somewhere safe. Monthly backup goal counted.'); }
 function importData(inp){ const f=inp.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const o=JSON.parse(r.result); if(o.tasks&&o.log){ S=o; save(); render(); sys('Restored','Backup imported.'); } else alert('That file is not a System backup.'); }catch(e){ alert('Could not read that file.'); } }; r.readAsText(f); }
 function resetAll(){ if(!confirm('Erase all progress? This cannot be undone.')) return; S=fresh(); S.day1=null; save(); load(); render(); }
 
 /* ========= NAV / INIT ========= */
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{ document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); document.querySelectorAll('.view').forEach(v=>v.classList.remove('on')); document.getElementById('v-'+b.dataset.v).classList.add('on'); window.scrollTo(0,0); });
-load(); rollover(); checkAch(); render(); lockScreen();
-if('serviceWorker' in navigator&&location.protocol.startsWith('http')){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+load(); rollover(); ensureBoss(); spawnEmergency(); checkEmergency(); checkAch(); render(); lockScreen(); setInterval(()=>{ checkEmergency(); renderEmergency(); },60000);
+if('serviceWorker' in navigator&&location.protocol.startsWith('http')){ navigator.serviceWorker.register('sw.js').catch(()=>{}); } if(window.Android&&Android.requestSteps){ setTimeout(()=>Android.requestSteps(),800); }
 </script>
 </body>
 </html>
