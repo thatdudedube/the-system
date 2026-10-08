@@ -74,6 +74,42 @@ jobs:
               implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
           }
           EOF
+          mkdir -p $A/res/xml $A/res/drawable $A/res/values
+          cat > $A/res/drawable/ic_drop.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+            <path android:fillColor="#4FA3FF" android:pathData="M12,2 C12,2 5,10 5,14.5 A7,7 0 0 0 19,14.5 C19,10 12,2 12,2 Z"/>
+          </vector>
+          EOF
+          cat > $A/res/drawable/ic_tooth.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+            <path android:fillColor="#DDE6FF" android:pathData="M7,3 C4,3 3,6 4,9 C5,12 6,14 6,18 C6,20 7,22 8,22 C9,22 9.5,19 10,16 C10.5,14 11,13 12,13 C13,13 13.5,14 14,16 C14.5,19 15,22 16,22 C17,22 18,20 18,18 C18,14 19,12 20,9 C21,6 20,3 17,3 C15,3 14,4 12,4 C10,4 9,3 7,3 Z"/>
+          </vector>
+          EOF
+          cat > $A/res/drawable/ic_stairs.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+            <path android:fillColor="#4CE0A2" android:pathData="M3,21 L3,17 L8,17 L8,13 L13,13 L13,9 L18,9 L18,5 L23,5 L23,21 Z"/>
+          </vector>
+          EOF
+          cat > $A/res/xml/shortcuts.xml <<'EOF'
+          <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+            <shortcut android:shortcutId="water" android:enabled="true" android:icon="@drawable/ic_drop" android:shortcutShortLabel="@string/sc_water" android:shortcutLongLabel="@string/sc_water_long">
+              <intent android:action="android.intent.action.VIEW" android:targetPackage="uk.thesystem.app" android:targetClass="uk.thesystem.app.QuickActivity"><extra android:name="key" android:value="water"/></intent>
+            </shortcut>
+            <shortcut android:shortcutId="teeth" android:enabled="true" android:icon="@drawable/ic_tooth" android:shortcutShortLabel="@string/sc_teeth" android:shortcutLongLabel="@string/sc_teeth_long">
+              <intent android:action="android.intent.action.VIEW" android:targetPackage="uk.thesystem.app" android:targetClass="uk.thesystem.app.QuickActivity"><extra android:name="key" android:value="teeth"/></intent>
+            </shortcut>
+            <shortcut android:shortcutId="stairs" android:enabled="true" android:icon="@drawable/ic_stairs" android:shortcutShortLabel="@string/sc_stairs" android:shortcutLongLabel="@string/sc_stairs_long">
+              <intent android:action="android.intent.action.VIEW" android:targetPackage="uk.thesystem.app" android:targetClass="uk.thesystem.app.QuickActivity"><extra android:name="key" android:value="stairs"/></intent>
+            </shortcut>
+          </shortcuts>
+          EOF
+          cat > $A/res/values/strings.xml <<'EOF'
+          <resources>
+            <string name="sc_water">Water +1</string><string name="sc_water_long">Log one cup of water</string>
+            <string name="sc_teeth">Teeth +1</string><string name="sc_teeth_long">Log brush and floss</string>
+            <string name="sc_stairs">Stairs +1</string><string name="sc_stairs_long">Log one flight of stairs</string>
+          </resources>
+          EOF
           sed -i "s/RUNNUM/$GITHUB_RUN_NUMBER/g" android/app/build.gradle
           cat > $A/AndroidManifest.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
@@ -89,6 +125,7 @@ jobs:
               </queries>
               <application android:label="The System" android:icon="@mipmap/ic_launcher" android:allowBackup="true" android:supportsRtl="true" android:theme="@android:style/Theme.Material.NoActionBar">
                   <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden|uiMode" android:windowSoftInputMode="adjustResize">
+                      <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts"/>
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
@@ -103,6 +140,10 @@ jobs:
                           <category android:name="android.intent.category.HEALTH_PERMISSIONS"/>
                       </intent-filter>
                   </activity-alias>
+                  <activity android:name=".QuickActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:excludeFromRecents="true" android:noHistory="true"/>
+                  <service android:name=".WaterTile" android:exported="true" android:icon="@drawable/ic_drop" android:label="Water +1" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"><intent-filter><action android:name="android.service.quicksettings.action.QS_TILE"/></intent-filter></service>
+                  <service android:name=".TeethTile" android:exported="true" android:icon="@drawable/ic_tooth" android:label="Teeth +1" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"><intent-filter><action android:name="android.service.quicksettings.action.QS_TILE"/></intent-filter></service>
+                  <service android:name=".StairsTile" android:exported="true" android:icon="@drawable/ic_stairs" android:label="Stairs +1" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"><intent-filter><action android:name="android.service.quicksettings.action.QS_TILE"/></intent-filter></service>
                   <receiver android:name=".QuickLogReceiver" android:exported="false">
                       <intent-filter><action android:name="uk.thesystem.QUICKLOG"/></intent-filter>
                   </receiver>
@@ -377,13 +418,11 @@ jobs:
               public static void show(Context c) {
                   SharedPreferences p = c.getSharedPreferences("quicklog", Context.MODE_PRIVATE);
                   NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
-                  if (!p.getBoolean("on", true)) { nm.cancel(ID); return; }
+                  if (!p.getBoolean("on", false)) { nm.cancel(ID); return; }
                   NotificationChannel ch = new NotificationChannel(CH, "Quick log", NotificationManager.IMPORTANCE_LOW);
                   ch.setShowBadge(false);
                   nm.createNotificationChannel(ch);
-                  int w = p.getInt("base_water", 0) + p.getInt("add_water", 0);
-                  int t = p.getInt("base_teeth", 0) + p.getInt("add_teeth", 0);
-                  int s = p.getInt("base_stairs", 0) + p.getInt("add_stairs", 0);
+                  int w = total(c, "water"), t = total(c, "teeth"), s = total(c, "stairs");
                   PendingIntent open = PendingIntent.getActivity(c, 0, new Intent(c, MainActivity.class), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
                   Notification n = new Notification.Builder(c, CH)
                           .setSmallIcon(android.R.drawable.ic_menu_add)
@@ -397,11 +436,7 @@ jobs:
                   nm.notify(ID, n);
               }
 
-              @Override
-              public void onReceive(Context c, Intent i) {
-                  if (Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) { show(c); return; }
-                  String key = i.getStringExtra("key");
-                  if (key == null) return;
+              public static int bump(Context c, String key) {
                   SharedPreferences p = c.getSharedPreferences("quicklog", Context.MODE_PRIVATE);
                   String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.UK).format(new java.util.Date());
                   if (!today.equals(p.getString("date", ""))) {
@@ -409,8 +444,106 @@ jobs:
                               .putInt("add_water", 0).putInt("add_teeth", 0).putInt("add_stairs", 0).apply();
                   }
                   p.edit().putInt("add_" + key, p.getInt("add_" + key, 0) + 1).apply();
+                  return total(c, key);
+              }
+
+              public static int total(Context c, String key) {
+                  SharedPreferences p = c.getSharedPreferences("quicklog", Context.MODE_PRIVATE);
+                  return p.getInt("base_" + key, 0) + p.getInt("add_" + key, 0);
+              }
+
+              @Override
+              public void onReceive(Context c, Intent i) {
+                  if (Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) { show(c); return; }
+                  String key = i.getStringExtra("key");
+                  if (key == null) return;
+                  bump(c, key);
                   show(c);
               }
+          }
+          EOF
+          cat > $A/java/uk/thesystem/app/QuickActivity.java <<'EOF'
+          package uk.thesystem.app;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.widget.Toast;
+
+          public class QuickActivity extends Activity {
+              @Override
+              protected void onCreate(Bundle b) {
+                  super.onCreate(b);
+                  String key = getIntent().getStringExtra("key");
+                  if (key != null) {
+                      int n = QuickLogReceiver.bump(this, key);
+                      String label = key.equals("water") ? "Water " + n + "/8 cups" : key.equals("teeth") ? "Brush & floss " + n + "/2" : "Stairs " + n + "/20 flights";
+                      Toast.makeText(this, "[SYSTEM] " + label, Toast.LENGTH_SHORT).show();
+                      QuickLogReceiver.show(this);
+                      BaseTile.refresh(this, WaterTile.class); BaseTile.refresh(this, TeethTile.class); BaseTile.refresh(this, StairsTile.class);
+                  }
+                  finish();
+              }
+          }
+          EOF
+          cat > $A/java/uk/thesystem/app/BaseTile.java <<'EOF'
+          package uk.thesystem.app;
+
+          import android.content.ComponentName;
+          import android.content.Context;
+          import android.service.quicksettings.Tile;
+          import android.service.quicksettings.TileService;
+
+          public abstract class BaseTile extends TileService {
+              abstract String key();
+              abstract String label();
+              abstract int target();
+
+              @Override public void onStartListening() { update(); }
+
+              @Override public void onClick() {
+                  QuickLogReceiver.bump(this, key());
+                  update();
+                  QuickLogReceiver.show(this);
+              }
+
+              void update() {
+                  Tile t = getQsTile(); if (t == null) return;
+                  int n = QuickLogReceiver.total(this, key());
+                  t.setLabel(label() + " " + n + "/" + target());
+                  t.setState(n >= target() ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
+                  t.updateTile();
+              }
+
+              static void refresh(Context c, Class<?> cls) {
+                  try { TileService.requestListeningState(c, new ComponentName(c, cls)); } catch (Exception e) {}
+              }
+          }
+          EOF
+          cat > $A/java/uk/thesystem/app/WaterTile.java <<'EOF'
+          package uk.thesystem.app;
+
+          public class WaterTile extends BaseTile {
+              String key() { return "water"; }
+              String label() { return "Water"; }
+              int target() { return 8; }
+          }
+          EOF
+          cat > $A/java/uk/thesystem/app/TeethTile.java <<'EOF'
+          package uk.thesystem.app;
+
+          public class TeethTile extends BaseTile {
+              String key() { return "teeth"; }
+              String label() { return "Teeth"; }
+              int target() { return 2; }
+          }
+          EOF
+          cat > $A/java/uk/thesystem/app/StairsTile.java <<'EOF'
+          package uk.thesystem.app;
+
+          public class StairsTile extends BaseTile {
+              String key() { return "stairs"; }
+              String label() { return "Stairs"; }
+              int target() { return 20; }
           }
           EOF
           cat > $A/java/uk/thesystem/app/ReminderReceiver.java <<'EOF'
