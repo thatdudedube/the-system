@@ -416,24 +416,8 @@ jobs:
               }
 
               public static void show(Context c) {
-                  SharedPreferences p = c.getSharedPreferences("quicklog", Context.MODE_PRIVATE);
-                  NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
-                  if (!p.getBoolean("on", false)) { nm.cancel(ID); return; }
-                  NotificationChannel ch = new NotificationChannel(CH, "Quick log", NotificationManager.IMPORTANCE_LOW);
-                  ch.setShowBadge(false);
-                  nm.createNotificationChannel(ch);
-                  int w = total(c, "water"), t = total(c, "teeth"), s = total(c, "stairs");
-                  PendingIntent open = PendingIntent.getActivity(c, 0, new Intent(c, MainActivity.class), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-                  Notification n = new Notification.Builder(c, CH)
-                          .setSmallIcon(android.R.drawable.ic_menu_add)
-                          .setContentTitle("The System · quick log")
-                          .setContentText("Water " + w + "/8  ·  Teeth " + t + "/2  ·  Stairs " + s + "/20")
-                          .setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
-                          .addAction(new Notification.Action.Builder(null, "Water +1", act(c, "water", 11)).build())
-                          .addAction(new Notification.Action.Builder(null, "Teeth +1", act(c, "teeth", 12)).build())
-                          .addAction(new Notification.Action.Builder(null, "Stairs +1", act(c, "stairs", 13)).build())
-                          .build();
-                  nm.notify(ID, n);
+              NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+              nm.cancel(ID);
               }
 
               public static int bump(Context c, String key) {
