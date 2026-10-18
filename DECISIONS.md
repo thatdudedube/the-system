@@ -1,0 +1,21 @@
+# DECISIONS.md — why things are the way they are
+
+- 2026-10-03 — Build on the owner's old "Gamify" Notion system (five Skills, XP hierarchy) rather than copy the video app. Replace its polynomial level curve with geometric (×1.07/1.08) so late levels never become multi-year walls.
+- 2026-10-03 — 66-day arc kept as an opening chapter ("Awakening"), not a cap; levelling is infinite.
+- 2026-10-03 — Streaks per task, +1% XP per 10 days capped at +50%; milestones grant shield tokens.
+- 2026-10-04 — Avatar is an original anime-style character (not Solo Leveling IP); 21 forms every 5 levels; card rarity frames by tier.
+- 2026-10-05 — HP penalty switched from "missed Essential task" to "fewer than N quests cleared" (default 6). 0 HP = Weakened (XP ×0.5) until 300.
+- 2026-10-05 — Push-up/plank/run targets scale with the relevant stat level (start low, cap at 200/180 s/10 km).
+- 2026-10-05 — Distribution: Claude artifact failed as a phone app (login + no install). Moved to GitHub Pages PWA, then to an APK built by GitHub Actions because "a real app" was the requirement.
+- 2026-10-05 — Permanent keystore committed to the repo after throwaway keys broke updates twice. Explicit `signingConfigs` in Gradle; `~/.android` copy approach did not work on runners.
+- 2026-10-06 — Each build gets its own release tag (`build-N`) because reusing `latest` failed intermittently.
+- 2026-10-06 — Steps come from Health Connect (Samsung Health syncs into it); Samsung's own SDK is partner-only.
+- 2026-10-06 — Food: Open Food Facts search + barcode + manual; no AI calorie estimation (would need a paid key in the app). Healthy-eating quest auto-ticks under target; "Finish diary" and rollover credit added after a missed day.
+- 2026-10-07 — Accounting track made IFRS-only at the owner's request; UK GAAP lessons replaced by IFRS 19/IAS 12 advanced/IAS 32+IFRS 7/IFRS 16 lessor+IAS 40/IFRS 1+IFRS 15 advanced/regulator challenges.
+- 2026-10-08 — Workflow split into two steps and `${{ }}` removed after GitHub's 21,000-char expression limit broke the build.
+- 2026-10-08 — Persistent quick-log notification rejected by the owner; replaced by Nova-mappable app shortcuts and Quick Settings tiles, with no notification at all.
+- 2026-10-08 — All `confirm()`/`alert()` replaced by in-app dialogs: the artifact sandbox silently blocks native dialogs.
+- 2026-10-08 — Memory practice (recall / Feynman / question storm / three-pass notes) chosen over more content; lessons unlock one per day per track.
+- 2026-10-11 — Adopted the CONTEXT/AGENTS/DECISIONS/TICKETS working method so any future session or Claude Code starts from the repo, not the chat.
+- 2026-10-12 — Evaluated the ui-ux-pro-max skill: its style generator (claymorphism, rounded fonts) rejected as wrong for the status-window aesthetic; its UX rulebook adopted as a checklist. Fixed touch targets to Android 48 dp, Android back button now closes overlays, numeric keypads on number inputs.
+- 2026-10-13 — To-do list added to the Quests tab (one-off tasks with XP by difficulty, optional due date, half XP when late) instead of overloading daily quests. Morning mobility added as a dungeon-able workout.
