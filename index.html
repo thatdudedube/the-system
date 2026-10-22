@@ -51,9 +51,9 @@ textarea{font:inherit;color:var(--text);background:var(--panel2);border:1px soli
 .win h2 small{font-family:Inter;font-size:12px;color:var(--muted);font-weight:500;letter-spacing:0;margin-left:8px}
 /* top status */
 .status{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:14px}
-.status .title{font-size:30px;line-height:1;color:#fff}
+.status .title{font-size:26px;line-height:1;color:#fff}
 .status .sub{color:var(--muted);font-size:13px;margin-top:4px}
-.rank{font-family:Rajdhani;font-size:44px;font-weight:700;line-height:1;color:var(--gold);text-shadow:0 0 14px rgba(242,193,78,.5)}
+.rank{font-family:Rajdhani;font-size:30px;font-weight:700;line-height:1;color:var(--gold);text-shadow:0 0 14px rgba(242,193,78,.5);text-align:right}
 .rank small{font-size:12px;color:var(--muted);display:block;font-weight:500;letter-spacing:.1em}
 .hearts{font-size:15px;letter-spacing:1px}
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -134,6 +134,13 @@ textarea{font:inherit;color:var(--text);background:var(--panel2);border:1px soli
 .dgn .timer{font-family:Rajdhani;font-size:56px;font-weight:700;color:var(--sys);text-align:center;letter-spacing:.05em;text-shadow:0 0 20px var(--sysglow)}
 .dgn .mission{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.dgn .mission.done .chk{background:var(--sys);border-color:var(--sys);box-shadow:0 0 10px var(--sysglow)}.dgn .mission.done .nm{color:var(--muted);text-decoration:line-through}.dgn .mission.cur{background:rgba(79,163,255,.08);margin:0 -8px;padding:10px 8px}
 .gate{display:inline-block;font-family:Rajdhani;font-weight:700;font-size:13px;letter-spacing:.1em;padding:1px 7px;border:1px solid var(--gold);color:var(--gold)}
+.hpblock{margin-top:12px}.hpblock .top{display:flex;justify-content:space-between;align-items:baseline;font-family:Rajdhani;font-size:18px}
+.pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;padding:2px 8px;border:1px solid var(--hp);color:var(--hp);border-radius:2px;font-family:Inter,sans-serif;vertical-align:middle}
+.minis{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}.minis div{border:1px solid var(--line);background:rgba(10,16,36,.6);padding:6px 4px;text-align:center}.minis b{display:block;font-family:Rajdhani;font-size:20px;line-height:1.1}.minis span{font-size:10px;color:var(--muted);letter-spacing:.04em}
+.kvlist .sub{gap:12px}.kvlist .sub b{flex:1}.kvlist .sub span{flex:none;text-align:right;white-space:nowrap;color:var(--sys);font-weight:600}
+.qhead{display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer}
+.qnext{font-size:13px;margin:6px 0 2px;color:var(--text)}.qnext b{color:var(--gold);font-weight:600}
+.menu{position:relative;display:inline-block}.menu .pop{position:absolute;right:0;top:100%;z-index:5;background:var(--panel);border:1px solid var(--line2);min-width:130px;box-shadow:0 8px 20px -6px #000}.menu .pop button{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:12px 14px;color:var(--text);font-size:14px}.menu .pop button:last-child{border-bottom:0;color:var(--hp)}
 .lesson{position:fixed;inset:0;z-index:26;background:var(--bg);overflow:auto;padding:16px 14px 100px}
 .lesson .body{font-size:16px;line-height:1.65;max-width:620px;margin:0 auto}.lesson .body p{margin:0 0 14px}
 .lesson h1{font-size:26px;color:#fff;margin:6px 0 2px}
@@ -233,10 +240,11 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
       <h2>Rise rating</h2>
       <div class="tabs"><button class="on" onclick="setRating('current',this)">Current</button><button onclick="setRating('potential',this)">Potential</button><button onclick="setRating('day1',this)">Day 1</button></div>
       <div id="radar"></div>
-      <div class="grid" id="ratingGrid"></div>
+      <div class="grid" id="ratingGrid" style="display:none"></div>
+      <div class="muted" id="ratingNote" style="font-size:12px;text-align:center"></div>
     </div>
     <div class="win">
-      <h2>Skills <small>tap to see subcategories</small></h2>
+      <h2>Skill details <small>tap a skill for subcategories</small></h2>
       <div id="skillList"></div>
     </div>
     <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="setAvatar(this)">
@@ -247,7 +255,8 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
     <div class="strip" id="strip"></div>
     <div class="mood" id="mood"></div>
     <div class="win">
-      <h2>Daily quests <small id="qSummary"></small></h2>
+      <div class="row"><h2 style="margin:0">Daily quests</h2><button class="btn sm" id="editModeBtn" onclick="window._editQ=!window._editQ;renderQuests()">Edit list</button></div>
+      <div class="muted" id="qSummary" style="font-size:12px;margin:4px 0 6px"></div>
       <div id="taskList"></div>
       <div class="row" style="margin-top:12px">
         <span class="muted" id="goodDay"></span>
@@ -257,8 +266,9 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
     </div>
     <div class="win col" id="todoWin">
       <h2 onclick="toggleWin('todoWin')">To-do <small id="todoCount"></small></h2>
-      <div class="row" style="gap:6px"><input id="td-text" placeholder="Something to get done" onkeydown="if(event.key==='Enter')addTodo()"><select id="td-diff" style="max-width:120px"><option value="easy">Easy · 8</option><option value="medium" selected>Medium · 38</option><option value="hard">Hard · 150</option></select><button class="btn sm primary" onclick="addTodo()">Add</button></div>
-      <div class="row" style="gap:6px;margin-top:6px"><select id="td-sub" style="flex:1">${''}</select><input id="td-due" type="date" style="max-width:150px" title="Due (optional)"></div>
+      <div class="row" style="gap:6px;flex-wrap:nowrap"><input id="td-text" style="flex:1;min-width:0" placeholder="Something to get done" onkeydown="if(event.key==='Enter')addTodo()"><button class="btn primary" style="flex:none" onclick="addTodo()">Add</button></div>
+      <a href="#" class="muted" style="font-size:12px;display:inline-block;padding:8px 0" onclick="const o=document.getElementById('td-opts');o.style.display=o.style.display==='none'?'grid':'none';return false">Options: difficulty, skill, due date ▾</a>
+      <div id="td-opts" style="display:none;grid-template-columns:1fr 1fr;gap:6px"><select id="td-diff"><option value="easy">Easy · 8 XP</option><option value="medium" selected>Medium · 38 XP</option><option value="hard">Hard · 150 XP</option></select><input id="td-due" type="date" title="Due (optional)"><select id="td-sub" style="grid-column:1/-1"></select></div>
       <div id="todoList" style="margin-top:8px"></div>
       <div id="todoDone" style="margin-top:8px"></div>
     </div>
@@ -303,20 +313,20 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
       <label>Variation</label><select id="ex-var" onchange="renderTrainForm()"></select>
       <div id="ex-sidewrap" style="display:none"><label>Direction / side</label><div class="tabs" id="ex-side"></div></div>
       <label id="ex-amtlabel">Amount</label>
-      <div class="row" style="gap:8px"><input type="number" inputmode="decimal" id="ex-amt" min="0" step="1" placeholder="e.g. 20" oninput="renderTrainForm()"><button class="btn primary" onclick="logSet()">Log set</button></div>
+      <div class="row" style="gap:8px;flex-wrap:nowrap"><input type="number" inputmode="decimal" id="ex-amt" style="flex:1;min-width:0" min="0" step="1" placeholder="e.g. 20" oninput="renderTrainForm()"><button class="btn primary" style="flex:none;white-space:nowrap" onclick="logSet()">Log set</button></div>
       <div class="muted" id="ex-preview" style="margin-top:8px"></div>
       <div id="ex-desc" style="font-size:13px;margin-top:6px;color:var(--text);line-height:1.45"></div>
       <div class="row" style="margin-top:10px"><span></span><button class="btn sm" onclick="openExerciseModal()">Add custom exercise</button></div>
     </div>
     <div class="win">
-      <h2>Saved workouts <small>log a whole circuit in one tap</small></h2>
-      <div id="workoutList"></div>
-      <button class="btn sm" style="margin-top:8px" onclick="openWorkoutModal()">New workout</button>
-    </div>
-    <div class="win">
       <h2>Today <small id="trainDate"></small></h2>
       <div id="todayTotals"></div>
       <div id="todaySets" style="margin-top:8px"></div>
+    </div>
+    <div class="win">
+      <h2>Saved workouts <small>tap Enter gate to train with a timer</small></h2>
+      <div id="workoutList"></div>
+      <button class="btn sm" style="margin-top:8px" onclick="openWorkoutModal()">New workout</button>
     </div>
     <div class="win">
       <h2>Records <small>best single day</small></h2>
@@ -326,6 +336,10 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
 
   <!-- PROGRESS -->
   <section class="view" id="v-progress">
+    <div class="win">
+      <h2>Weekly review <small id="wrLabel"></small></h2>
+      <div id="weeklyReview"></div>
+    </div>
     <div class="win">
       <h2>Daily XP <small>last 14 days</small></h2>
       <div id="xpChart"></div>
@@ -338,10 +352,6 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
     <div class="win">
       <h2>Quest history <small>last 14 days</small></h2>
       <div id="histGrid"></div>
-    </div>
-    <div class="win">
-      <h2>Weekly review <small id="wrLabel"></small></h2>
-      <div id="weeklyReview"></div>
     </div>
     <div class="win">
       <h2>Mood patterns <small>what moves the needle</small></h2>
@@ -773,7 +783,7 @@ window.onSteps=function(n){ n=Number(n); if(n>=0){ S.stepsStatus='synced '+new D
 window.refreshSteps=refreshSteps;
 function renderTrackers(){
   document.getElementById('trackers').innerHTML=TRACKERS.map(t=>{const c=habitCount(t.id); const native=!!(window.Android&&Android.requestSteps);
-    const ctl=t.auto?`<div class="cnt" style="flex-direction:column;gap:4px"><button class="btn sm primary" onclick="refreshSteps()">${native?'Sync':'Set'}</button>${native?'':`<button class="btn sm" onclick="const v=prompt('Steps today');if(v)habitSet('${t.id}',Number(v))">Edit</button>`}</div>`:`<div class="cnt"><button class="btn" onclick="habitAdd('${t.id}',-1)">−</button><button class="btn primary" onclick="habitAdd('${t.id}',1)">+</button></div>`;
+    const ctl=t.auto?`<div class="cnt"><button class="btn primary" style="width:auto;padding:0 14px" onclick="refreshSteps()">${native?'Sync':'Set'}</button></div>`:`<div class="cnt"><button class="btn" onclick="habitAdd('${t.id}',-1)">−</button><button class="btn primary" onclick="habitAdd('${t.id}',1)">+</button></div>`;
     const detail=t.auto?(native?(S.stepsStatus||'from Health Connect'):'enter manually here; syncs automatically in the installed app'):`${t.perUnit?t.perUnit+' XP each, ':''}+${t.bonus} at target`;
     return `<div class="trk"><div class="n" style="${t.auto?'font-size:22px':''}">${t.auto?fmt(c):c}</div><div style="flex:1"><b>${t.name}</b><div class="muted" style="font-size:12px">${t.auto?fmt(c):c} / ${t.auto?fmt(t.target):t.target} ${t.unit}${c>=t.target?' ✓':''} · ${detail} · ${t.primary}</div><div class="bar"><i style="width:${Math.min(100,c/t.target*100)}%"></i></div></div>${ctl}</div>`;}).join('');
 }
@@ -924,7 +934,14 @@ function renderDungeon(){ const D=S.dungeon; let el=document.getElementById('dgn
   const done=D.missions.filter(m=>m.done).length; const cur=D.missions.findIndex(m=>!m.done);
   el.innerHTML=`<div class="row"><span class="gate">${D.rank}-RANK GATE</span><button class="btn sm danger" onclick="abandonDungeon()">Abandon</button></div><h2 class="disp" style="font-size:24px;color:#fff;margin:10px 0 4px">${esc(D.name)}</h2><div class="muted" style="font-size:13px">${done} / ${D.missions.length} missions · reward +${GATE_BONUS[D.rank]} XP${['A','S'].includes(D.rank)?' + reward box':''}${S.dungeonBest[D.wid]?' · best '+fmtTime(S.dungeonBest[D.wid]):''}</div><div class="timer" id="dgnTimer">${fmtTime(Date.now()-D.start)}</div><div class="bar"><i style="width:${done/D.missions.length*100}%"></i></div><div style="margin-top:10px">${D.missions.map((m,i)=>{const ex=exById(m.ex); return `<div class="mission ${m.done?'done':''} ${i===cur?'cur':''}"><button class="chk" onclick="dungeonTick(${i})" ${m.done?'disabled':''}>${m.done?'✓':''}</button><div class="nm" style="flex:1"><b>${m.amt} ${ex.unit} ${esc(ex.name)}</b><div class="muted" style="font-size:12px">Round ${m.round} · ${esc(m.variant)}${m.side?' · <b>'+m.side+'</b>':''}</div>${ex.desc?`<div style="font-size:12px;margin-top:3px;line-height:1.4">${esc(ex.desc)}</div>`:''}</div></div>`;}).join('')}</div>`; }
 setInterval(()=>{ const t=document.getElementById('dgnTimer'); if(t&&S.dungeon&&!S.dungeon.ended) t.textContent=fmtTime(Date.now()-S.dungeon.start); },1000);
-function renderWorkouts(){ document.getElementById('workoutList').innerHTML=(S.dungeon&&!S.dungeon.ended?`<div class="emerg" style="margin-bottom:10px"><div class="row"><b>Gate in progress: ${esc(S.dungeon.name)}</b><button class="btn sm primary" onclick="renderDungeon()">Resume</button></div></div>`:'')+S.workouts.length?S.workouts.map(w=>`<div class="excard"><div class="row"><b>${esc(w.name)} <span class="gate">${gateRank(w)}-RANK</span></b><span class="muted" style="font-size:12px">${w.rounds} rounds${S.dungeonBest[w.id]?' · best '+fmtTime(S.dungeonBest[w.id]):''}</span></div>${w.desc?`<div style="font-size:13px;margin:4px 0 2px;line-height:1.4">${esc(w.desc)}</div>`:''}<div class="muted" style="font-size:12px;margin:4px 0 6px">${w.items.map(it=>{const ex=exById(it.ex);return ex?it.amt+' '+(ex.unit==='reps'?'×':ex.unit+' ')+' '+ex.name+(ex.sides?' (each side)':'')+' · '+it.variant:'';}).filter(Boolean).join(' · ')}</div><div class="row"><span class="muted" style="font-size:12px">≈ ${fmt(workoutXP(w))} XP</span><span><button class="btn sm primary" onclick="enterDungeon('${w.id}')">Enter gate</button> <button class="btn sm" onclick="logWorkout('${w.id}')">Log</button> <button class="btn sm" onclick="openWorkoutModal('${w.id}')">Edit</button> <button class="btn sm" onclick="delWorkout('${w.id}')">×</button></span></div></div>`).join(''):'<div class="empty">No saved workouts yet.</div>'; }
+function renderWorkouts(){ window._wOpen=window._wOpen||{}; const banner=(S.dungeon&&!S.dungeon.ended)?`<div class="emerg" style="margin-bottom:10px"><div class="row"><b>Gate in progress: ${esc(S.dungeon.name)}</b><button class="btn sm primary" onclick="renderDungeon()">Resume</button></div></div>`:'';
+  document.getElementById('workoutList').innerHTML=banner+(S.workouts.length?S.workouts.map(w=>{ const open=!!window._wOpen[w.id]; const r=w.rounds||1; return `<div class="excard"><div class="row"><b>${esc(w.name)}</b><span class="gate">${gateRank(w)}-RANK</span></div>
+    <div class="muted" style="font-size:12px;margin:2px 0 4px">${w.items.length} exercises · ${r} round${r===1?'':'s'} · ≈ ${fmt(workoutXP(w))} XP${S.dungeonBest[w.id]?' · best '+fmtTime(S.dungeonBest[w.id]):''}</div>
+    ${w.desc?`<div style="font-size:13px;line-height:1.4">${esc(w.desc)}</div>`:''}
+    <a href="#" class="muted" style="font-size:12px;display:inline-block;padding:8px 0" onclick="window._wOpen['${w.id}']=!window._wOpen['${w.id}'];renderWorkouts();return false">${open?'Hide exercises ▴':'Show exercises ▾'}</a>
+    ${open?`<div style="font-size:13px;line-height:1.5;margin-bottom:6px">${w.items.map(it=>{const ex=exById(it.ex);return ex?`<div class="sub"><b>${esc(shortName(ex))}${ex.sides?' <span class="muted">(each side)</span>':''}</b><span>${it.amt} ${ex.unit==='reps'?'reps':ex.unit} · ${esc(it.variant)}</span></div>`:'';}).join('')}</div>`:''}
+    <div class="row" style="gap:6px"><button class="btn sm primary" style="flex:1" onclick="enterDungeon('${w.id}')">Enter gate</button><button class="btn sm" onclick="logWorkout('${w.id}')">Log</button><span class="menu"><button class="btn sm" aria-label="More" onclick="event.stopPropagation();this.nextElementSibling.style.display=this.nextElementSibling.style.display==='block'?'none':'block'">⋯</button><span class="pop" style="display:none"><button onclick="openWorkoutModal('${w.id}')">Edit</button><button onclick="delWorkout('${w.id}')">Delete</button></span></span></div></div>`;}).join(''):'<div class="empty">No saved workouts yet.</div>'); }
+document.addEventListener('click',()=>document.querySelectorAll('.menu .pop').forEach(p=>p.style.display='none'));
 function workoutRow(it={}){ const cats=['Kettlebell','Bodyweight','Cardio & sport','Mobility & posture','Custom']; const opts=cats.map(c=>{const items=allExercises().filter(e=>(e.cat||'Custom')===c); return items.length?`<optgroup label="${c}">${items.map(e=>`<option value="${e.id}" ${it.ex===e.id?'selected':''}>${esc(shortName(e))}</option>`).join('')}</optgroup>`:'';}).join(''); return `<div class="row wrow" style="gap:4px;margin-bottom:6px"><select class="w-ex" onchange="wVariants(this)" style="flex:2">${opts}</select><select class="w-var" style="flex:1"></select><input class="w-amt" type="number" min="0" placeholder="reps" value="${it.amt||''}" style="max-width:70px"><button type="button" class="btn sm" onclick="this.parentElement.remove()">×</button></div>`; }
 function wVariants(sel,chosen){ const ex=exById(sel.value); const v=sel.parentElement.querySelector('.w-var'); v.innerHTML=Object.keys(ex.variants||{Standard:1}).map(x=>`<option ${x===chosen?'selected':''}>${esc(x)}</option>`).join(''); }
 function openWorkoutModal(id){ const w=id?S.workouts.find(x=>x.id===id):{name:'',rounds:1,items:[{},{},{}]};
@@ -947,7 +964,7 @@ function renderTrain(){
   renderTrainForm(); renderWorkouts(); const d=today(); document.getElementById('trainDate').textContent=d;
   const todays=S.sets.filter(x=>x.date===d); const byEx={}; todays.forEach(x=>{byEx[x.ex]=(byEx[x.ex]||0)+x.amt;});
   document.getElementById('todayTotals').innerHTML=Object.keys(byEx).length?Object.entries(byEx).map(([id,v])=>{const ex=exById(id); const t=S.tasks.find(t=>t.link&&t.link.ex===id);
-    return `<div class="excard"><div class="row"><b>${esc(ex.name)}</b><span class="totals">${v} ${ex.unit}</span></div>${t?`<div class="bar"><i style="width:${Math.min(100,v/targetOf(t)*100)}%"></i></div><div class="muted" style="font-size:12px">${t.name}: ${v} / ${targetOf(t)} ${ex.unit}${v>=targetOf(t)?' ✓':''}</div>`:''}</div>`;}).join(''):'<div class="empty">Nothing logged yet today. First set?</div>';
+    return `<div class="excard"><div class="row"><b>${esc(ex.name)}</b><span class="totals">${v} ${ex.unit}</span></div>${t?`<div class="bar"><i style="width:${Math.min(100,v/targetOf(t)*100)}%"></i></div><div class="muted" style="font-size:12px">${t.name}: ${v} / ${targetOf(t)} ${ex.unit}${v>=targetOf(t)?' ✓':''}</div>`:''}</div>`;}).join(''):'<div class="muted" style="font-size:13px">Nothing logged yet today.</div>';
   document.getElementById('todaySets').innerHTML=todays.slice().reverse().map(x=>`<div class="setrow"><b>${esc(exById(x.ex).name)} · ${esc(x.variant)}</b><span>${x.amt} ${exById(x.ex).unit} · +${x.xp} XP <button class="btn sm" style="padding:1px 7px;margin-left:6px" onclick="delSet('${x.id}')">×</button></span></div>`).join('');
   const best={}; for(const x of S.sets){ const k=x.ex; best[k]=best[k]||{}; best[k][x.date]=(best[k][x.date]||0)+x.amt; }
   document.getElementById('exRecords').innerHTML=Object.keys(best).length?Object.entries(best).map(([id,days])=>{const ex=exById(id); const [bd,bv]=Object.entries(days).sort((a,b)=>b[1]-a[1])[0]; const total=Object.values(days).reduce((a,b)=>a+b,0);
@@ -990,11 +1007,12 @@ function renderPlayer(){
       <div style="text-align:center"><div class="bigrank">${r.startsWith('Monarch')?r.split(' ')[1]:r.length>1?r.slice(0,1):r}</div><div class="muted" style="font-size:11px;letter-spacing:.15em">${r.startsWith('Monarch')?'MONARCH':r.length>1?r.toUpperCase():'RANK'}</div></div></div>
     <div class="bar" style="margin-top:12px"><i style="width:${cl.into/cl.need*100}%"></i></div>
     <div class="row muted" style="font-size:12px"><span>${fmt(cl.into)} / ${fmt(cl.need)} XP to Lv ${cl.lvl+1}</span><span>${nextR[1]+' at Lv '+nextR[0]}</span></div>
-    <div class="row" style="margin-top:12px;font-family:Rajdhani;font-size:17px"><span>HP <b style="color:var(--hp)">${S.hp}</b> / ${MAXHP}${weakMult()<1?' <span style="color:var(--hp)">· Weakened, XP ×0.5</span>':''}</span><span>Shields <b style="color:var(--gold)">${S.tokens}</b></span><span>Day <b>${di<=66?di+'/66':di}</b></span></div>
+    <div class="hpblock"><div class="top"><span>HP <b style="color:var(--hp)">${S.hp}</b> / ${MAXHP}</span>${weakMult()<1?'<span class="pill">WEAKENED · XP ×0.5</span>':''}</div>
     <div class="bar hp"><i style="width:${S.hp/MAXHP*100}%"></i></div>
-    <div class="row muted" style="font-size:12px"><span>Healed today ${(S.healLog||{})[today()]||0}/${HEAL_CAP} · Pass streak <b style="color:var(--gold)">${S.passStreak||0}</b> day${(S.passStreak||0)===1?'':'s'}</span><a href="#" style="color:var(--sys)" onclick="healInfo();return false">How to heal</a></div>
+    <div class="row muted" style="font-size:12px"><span>Healed today ${(S.healLog||{})[today()]||0} / ${HEAL_CAP}</span><a href="#" style="color:var(--sys);padding:6px 0" onclick="healInfo();return false">How to heal ›</a></div>
+    <div class="minis"><div><b style="color:var(--gold)">${S.passStreak||0}</b><span>PASS STREAK</span></div><div><b style="color:var(--gold)">${S.tokens}</b><span>SHIELDS</span></div><div><b style="color:var(--hp)">${S.potions||0}</b><span>POTIONS</span></div><div><b>${bestStreak(S)}</b><span>BEST STREAK</span></div></div></div>
     <div style="margin-top:12px">${Object.keys(SKILLS).map(k=>{const L=skillLevel(S,k); const d1=(S.day1||{})[k]||1; return `<div class="statrow"><b>${k.toUpperCase()}</b><span class="v">${L.lvl}${L.lvl>d1?`<small>+${L.lvl-d1}</small>`:''}</span></div>`;}).join('')}</div>
-    <div class="muted" style="font-size:12px;margin-top:10px">Best streak ${bestStreak(S)} days · ${Object.keys(S.ach).length} achievements · ${fmt(charXP(S))} lifetime XP</div>`;
+    <div class="muted" style="font-size:12px;margin-top:10px">${Object.keys(S.ach).length} achievements · ${fmt(charXP(S))} lifetime XP</div>`;
 }
 function toggleWin(id){ S.ui.open=S.ui.open||{}; S.ui.open[id]=!S.ui.open[id]; save(); applyWins(); }
 function applyWins(){ for(const id of ['trkWin','questWin','treeWin','projWin','jrnWin','todoWin']){ const el=document.getElementById(id); if(el) el.classList.toggle('open',!!(S.ui.open||{})[id]); } }
@@ -1005,7 +1023,7 @@ function delTodo(id){ S.todos=S.todos.filter(x=>x.id!==id); save(); render(); }
 function renderTodos(){ const open=S.todos.filter(d=>!d.done).sort((a,b)=>(a.due||'9')<(b.due||'9')?-1:1); const done=S.todos.filter(d=>d.done).sort((a,b)=>b.done<a.done?-1:1).slice(0,20);
   const subSel=document.getElementById('td-sub'); if(subSel&&!subSel.options.length) subSel.innerHTML=ALL_SUBS.map(x=>`<option ${x==='Self-Discipline'?'selected':''}>${x}</option>`).join('');
   document.getElementById('todoCount').textContent=open.length?open.length+' open':'nothing open';
-  document.getElementById('todoList').innerHTML=open.length?open.map(d=>{const overdue=d.due&&d.due<today(), dueToday=d.due===today(); return `<div class="task"><button class="chk" onclick="doneTodo('${d.id}')"></button><div style="flex:1;min-width:0;cursor:pointer" onclick="doneTodo('${d.id}')"><div class="name">${esc(d.text)}</div><div class="meta"><span class="diff ${d.diff}">${DIFF[d.diff].label} · ${DIFF[d.diff].xp} XP</span><span>${d.sub}</span>${d.due?`<span style="color:${overdue?'var(--hp)':dueToday?'var(--gold)':'var(--muted)'}">${overdue?'overdue · ':dueToday?'due today':'due '+d.due.slice(5)}${overdue?d.due.slice(5):''}</span>`:''}</div></div><button class="btn sm" style="padding:3px 8px" onclick="delTodo('${d.id}')">×</button></div>`;}).join(''):'<div class="empty">Nothing to do. Add the next thing on your mind.</div>';
+  document.getElementById('todoList').innerHTML=open.length?open.map(d=>{const overdue=d.due&&d.due<today(), dueToday=d.due===today(); return `<div class="task"><button class="chk" onclick="doneTodo('${d.id}')"></button><div style="flex:1;min-width:0;cursor:pointer" onclick="doneTodo('${d.id}')"><div class="name">${esc(d.text)}</div><div class="meta"><span class="diff ${d.diff}">${DIFF[d.diff].label} · ${DIFF[d.diff].xp} XP</span><span>${d.sub}</span>${d.due?`<span style="color:${overdue?'var(--hp)':dueToday?'var(--gold)':'var(--muted)'}">${overdue?'overdue · ':dueToday?'due today':'due '+d.due.slice(5)}${overdue?d.due.slice(5):''}</span>`:''}</div></div><button class="btn sm" aria-label="Delete" onclick="delTodo('${d.id}')">×</button></div>`;}).join(''):'<div class="empty">Nothing to do. Add the next thing on your mind.</div>';
   document.getElementById('todoDone').innerHTML=done.length?`<div class="muted" style="font-size:12px;margin:6px 0 2px">Done recently</div>`+done.map(d=>`<div class="task done"><div class="chk">✓</div><div style="flex:1"><div class="name">${esc(d.text)}</div><div class="meta"><span>${d.done.slice(5)}</span></div></div><button class="btn sm" style="padding:3px 8px" onclick="undoTodo('${d.id}')">Undo</button></div>`).join(''):''; }
 function renderStrip(){ const d=today(); const done=S.tasks.filter(t=>t.last===d).length; const teaser=S.log.some(e=>e.task==='teaser'&&e.date===d);
   document.getElementById('strip').innerHTML=`<div><b>${done}/${S.tasks.length}</b><span>quests</span></div><div><b>${fmt(S.recap[d]||0)}</b><span>XP today</span></div><div><b style="color:var(--hp)">${S.hp}</b><span>HP</span></div><div><b style="color:${teaser?'var(--ok)':'var(--muted)'}">${teaser?'✓':'–'}</b><span>teaser</span></div>`;
@@ -1017,10 +1035,10 @@ function pullQuickLogs(){ try{ if(window.Android&&Android.pullQuickLogs){ const 
 window.pullQuickLogs=pullQuickLogs;
 function syncReminder(){ try{ if(window.Android&&Android.setReminder){ const d=today(); const left=S.tasks.length-S.tasks.filter(t=>t.last===d).length; const [h,m]=(S.reminder.time||'21:00').split(':').map(Number); Android.setReminder(S.reminder.on?1:0,h,m,'The System','Daily quests close at midnight. '+left+' still open when you last checked.'); } }catch(e){} }
 function markBookRead(t){ S.booksRead[t]=today(); sys('Book finished',t+' · +120 XP → Knowledge'); S.log.push({task:'book',date:today(),sub:'Knowledge',xp:Math.round(120*weakMult())}); recomputeRecap(today()); save(); checkAch(); render(); }
-function healInfo(){ document.getElementById('modalBody').innerHTML=`<h2>How to restore HP</h2><div style="font-size:14px;line-height:1.6">
-<div class="sub"><b>Day at threshold (${Math.min(S.threshold||6,S.tasks.length)}+ quests)</b><span>+20</span></div><div class="sub"><b>Pass streak (consecutive days at threshold)</b><span>+10 per day of streak, max +50</span></div><div class="sub"><b>Every 7th consecutive pass day</b><span>+100 extra</span></div><div class="sub"><b>Every 30th consecutive pass day</b><span>+1 shield</span></div><div class="sub"><b>Day at 80%+ of quests</b><span>+50</span></div><div class="sub"><b>Flawless day (100%)</b><span>+100</span></div>
-<div class="sub"><b>Dungeon gate cleared</b><span>+30 / +50 / +80</span></div><div class="sub"><b>Emergency quest cleared</b><span>+40</span></div><div class="sub"><b>Weekly boss defeated</b><span>+150</span></div>
-<div class="sub"><b>Weekly / monthly goal claimed</b><span>+25</span></div><div class="sub"><b>Recovery action or mobility session</b><span>+10</span></div><div class="sub"><b>Healing potion (reward boxes)</b><span>+100</span></div></div>
+function healInfo(){ document.getElementById('modalBody').innerHTML=`<h2>How to restore HP</h2><div class="kvlist" style="font-size:14px;line-height:1.5">
+<div class="sub"><b>Day at threshold (${Math.min(S.threshold||6,S.tasks.length)}+ quests)</b><span>+20</span></div><div class="sub"><b>Pass streak, per consecutive day</b><span>+10 × days (max 50)</span></div><div class="sub"><b>Every 7th pass day in a row</b><span>+100</span></div><div class="sub"><b>Every 30th pass day in a row</b><span>+1 shield</span></div><div class="sub"><b>Day at 80%+ of quests</b><span>+50</span></div><div class="sub"><b>Flawless day (100%)</b><span>+100</span></div>
+<div class="sub"><b>Gate cleared (E–D / C–B / A–S)</b><span>+30 / 50 / 80</span></div><div class="sub"><b>Emergency quest cleared</b><span>+40</span></div><div class="sub"><b>Weekly boss defeated</b><span>+150</span></div>
+<div class="sub"><b>Goal claimed</b><span>+25</span></div><div class="sub"><b>Recovery action or mobility</b><span>+10</span></div><div class="sub"><b>Healing potion</b><span>+100</span></div></div>
 <p class="muted" style="font-size:12px">Healing during the day is capped at ${HEAL_CAP} HP. End-of-day bonuses, boss heals and potions don't count toward the cap. Shields still block the daily penalty.</p><div class="row" style="margin-top:12px"><span></span><button class="btn" onclick="closeModal()">Close</button></div>`; document.getElementById('modal').classList.add('on'); }
 function drinkPotion(){ if(!(S.potions>0)) return; if(S.hp>=MAXHP){ sys('Potion','HP already full — save it.'); return; } S.potions--; heal(100,'healing potion',false); save(); render(); }
 function openBox(){ if(S.boxes<=0) return; S.boxes--; const r=Math.random(); let msg;
@@ -1200,20 +1218,25 @@ function renderQuests(){
   document.getElementById('qSummary').textContent=done+' of '+S.tasks.length+' cleared · '+(done>=Math.min(S.threshold||6,S.tasks.length)?'safe from penalty':'need '+Math.min(S.threshold||6,S.tasks.length)+' to avoid −'+HP_PENALTY+' HP');
   const cnt={easy:0,medium:0,hard:0}; S.tasks.filter(t=>t.last===d).forEach(t=>cnt[t.diff]++);
   document.getElementById('goodDay').textContent='Good day target: 1 hard · 3 medium · 5 easy ('+cnt.hard+'/'+cnt.medium+'/'+cnt.easy+' so far)';
-  document.getElementById('taskList').innerHTML=S.tasks.length?S.tasks.map(t=>`
+  document.getElementById('editModeBtn').textContent=window._editQ?'Done':'Edit list';
+  const ordered=S.tasks.slice().sort((a,b)=>(a.last===d)-(b.last===d));
+  document.getElementById('taskList').innerHTML=S.tasks.length?ordered.map(t=>`
     <div class="task ${t.last===d?'done':''}">
       <button class="chk" aria-label="Complete ${esc(t.name)}" onclick="toggleTask('${t.id}')">${t.last===d?'✓':''}</button>
       <div style="flex:1;min-width:0;cursor:pointer" onclick="toggleTask('${t.id}')"><div class="name">${esc(t.name)}</div>
         <div class="meta"><span class="diff ${t.diff}">${t.link?(t.link.ex.startsWith('tracker:')?'XP from tracker':'XP from Train log'):DIFF[t.diff].label+' · '+DIFF[t.diff].xp+' XP'}</span><span>${esc(t.primary)}</span>${t.link?`<span>${linkTotal(t)} / ${targetOf(t)} ${linkUnit(t)} logged${t.link.scale?' · grows with '+t.link.scale.stat:''}</span>`:''}</div></div>
       <div class="streak" title="streak">${t.streak>0?t.streak+'🔥':''}</div>
-      <button class="btn sm" style="padding:3px 8px" onclick="openTaskModal('${t.id}')">Edit</button>
+      ${window._editQ?`<button class="btn sm" onclick="openTaskModal('${t.id}')">Edit</button>`:''}
     </div>`).join(''):'<div class="empty">No quests yet. Add one to begin.</div>';
-  document.getElementById('questList').innerHTML=S.quests.length?S.quests.map(q=>`
-    <div class="quest"><div class="row"><b class="disp" style="font-size:18px">${esc(q.name)} <span class="tag ${q.main?'':'side'}">${q.main?'Main':'Side'}</span></b>
-      <span class="${q.status==='done'?'ok':'muted'}" style="font-size:13px">${q.status==='done'?'Cleared':'+'+fmt(q.bonus)+' XP'+(q.stepXp?' · '+q.stepXp+'/step':'')}</span></div>${q.steps.length>6?`<div class="bar"><i style="width:${q.steps.filter(x=>x.d).length/q.steps.length*100}%"></i></div>`:''}
-      ${q.steps.map((s,i)=>`<div class="step ${s.d?'done':''}"><button class="chk" onclick="toggleStep('${q.id}',${i})">${s.d?'✓':''}</button><span>${esc(s.t)}</span></div>`).join('')}
-      <div class="row" style="margin-top:6px"><span class="muted" style="font-size:12px">${esc(q.primary)} · ${esc(q.skill)}</span><span><button class="btn sm" onclick="openQuestModal('${q.id}')">Edit</button> <button class="btn sm" onclick="delQuest('${q.id}')">Remove</button></span></div>
-    </div>`).join(''):'<div class="empty">No quests. Set an objective with an end.</div>';
+  window._qOpen=window._qOpen||{};
+  document.getElementById('questList').innerHTML=S.quests.length?S.quests.map(q=>{ const nd=q.steps.filter(x=>x.d).length, open=!!window._qOpen[q.id], nxt=q.steps.find(x=>!x.d); return `
+    <div class="quest"><div class="qhead" onclick="window._qOpen['${q.id}']=!window._qOpen['${q.id}'];renderQuests()"><b class="disp" style="font-size:18px">${esc(q.name)} <span class="tag ${q.main?'':'side'}">${q.main?'Main':'Side'}</span></b>
+      <span class="${q.status==='done'?'ok':'muted'}" style="font-size:12px;white-space:nowrap">${q.status==='done'?'Cleared':nd+'/'+q.steps.length+' '+(open?'▴':'▾')}</span></div>
+      <div class="bar"><i style="width:${nd/q.steps.length*100}%"></i></div>
+      <div class="muted" style="font-size:12px">+${fmt(q.bonus)} XP on completion${q.stepXp?' · '+q.stepXp+' XP per step':''}</div>
+      ${!open&&nxt?`<div class="step"><button class="chk" onclick="toggleStep('${q.id}',${q.steps.indexOf(nxt)})"></button><span><b style="color:var(--gold);font-weight:600">Next:</b> ${esc(nxt.t)}</span></div>`:''}
+      ${open?q.steps.map((s,i)=>`<div class="step ${s.d?'done':''}"><button class="chk" onclick="toggleStep('${q.id}',${i})">${s.d?'✓':''}</button><span>${esc(s.t)}</span></div>`).join('')+`<div class="row" style="margin-top:6px"><span class="muted" style="font-size:12px">${esc(q.primary)} · ${esc(q.skill)}</span><span><button class="btn sm" onclick="openQuestModal('${q.id}')">Edit</button> <button class="btn sm" onclick="delQuest('${q.id}')">Remove</button></span></div>`:''}
+    </div>`;}).join(''):'<div class="empty">No quests. Set an objective with an end.</div>';
   document.getElementById('projectList').innerHTML=S.projects.length?S.projects.map(p=>`
     <div class="quest"><div class="row"><b class="disp" style="font-size:18px">${esc(p.name)}</b><span class="muted" style="font-size:13px">${(p.hours||0).toFixed(1)} h · ${esc(p.primary)}</span></div>
       <div class="row" style="margin-top:6px;gap:6px"><input type="number" step="0.25" min="0" placeholder="Hours" id="h-${p.id}" style="max-width:110px"><button class="btn sm" onclick="logSession('${p.id}',document.getElementById('h-${p.id}').value)">Log session</button><span class="muted" style="font-size:12px;flex:1">40 XP / hour</span><button class="btn sm" onclick="delProject('${p.id}')">Remove</button></div>
@@ -1226,7 +1249,7 @@ function renderStats(){
   for(const k of Object.keys(SKILLS)){ cur[k]=skillLevel(S,k).lvl; const share=skillXP(S,k)/Math.max(1,charXP(S)); pot[k]=levelFrom('skill',skillXP(S,k)+avg*share*66,skillMult(k)).lvl; }
   const show=ratingMode==='current'?cur:ratingMode==='potential'?pot:d1;
   document.getElementById('radar').innerHTML=radarSVG(show);
-  document.getElementById('ratingGrid').innerHTML=Object.keys(SKILLS).map(k=>{const v=show[k]||1; const dl=v-(d1[k]||1);
+  document.getElementById('ratingNote').textContent=ratingMode==='potential'?'Projected in 66 days at your 14-day pace':ratingMode==='day1'?'Where you started':'Tap a skill below for its subcategories'; document.getElementById('ratingGrid').innerHTML=Object.keys(SKILLS).map(k=>{const v=show[k]||1; const dl=v-(d1[k]||1);
     return `<div class="stat"><div class="n">${v}</div><div class="d">${k} <span class="delta ${dl>0?'up':'flat'}">${dl>0?'+'+dl+' since day 1':ratingMode==='day1'?'':'no change'}</span></div></div>`;}).join('')+
     `<div class="stat" style="grid-column:1/-1"><div class="n">${ratingMode==='day1'?(d1.char||1):ratingMode==='potential'?levelFrom('char',charXP(S)+avg*66).lvl:cl.lvl}</div><div class="d">Overall ${ratingMode==='potential'?'· projected in 66 days at your 14-day pace':''}</div></div>`;
   document.getElementById('skillList').innerHTML=Object.keys(SKILLS).map(k=>{const L=skillLevel(S,k);
@@ -1271,7 +1294,7 @@ function renderMoodCorr(){ const days=Object.keys(S.mood); const el=document.get
   const tests=[['8,000+ steps',d=>habitCount('steps',d)>=8000],['quest threshold met',d=>S.tasks.filter(t=>S.log.some(e=>e.task===t.id&&e.date===d)).length>=Math.min(S.threshold||6,S.tasks.length)],['a training session',d=>S.sets.some(x=>x.date===d)],['a journal entry',d=>!!(S.journal[d]&&(S.journal[d].text||S.journal[d].grat))],['clean eating',d=>foodHealthy(d)],['8 cups of water',d=>habitCount('water',d)>=8],['a lesson completed',d=>Object.values(S.learn||{}).some(t=>Object.values(t.done||{}).some(x=>x.date===d))]];
   const rows=tests.map(([n,f])=>{const a=days.filter(f).map(d=>S.mood[d]), b=days.filter(d=>!f(d)).map(d=>S.mood[d]); if(a.length<3||b.length<3) return null; const ma=a.reduce((x,y)=>x+y,0)/a.length, mb=b.reduce((x,y)=>x+y,0)/b.length; return {n,ma,mb,na:a.length,nb:b.length,diff:ma-mb};}).filter(Boolean).sort((x,y)=>Math.abs(y.diff)-Math.abs(x.diff));
   el.innerHTML=rows.length?rows.map(r=>`<div class="sub"><b>Days with ${r.n}</b><span style="color:${r.diff>0.2?'var(--ok)':r.diff<-0.2?'var(--hp)':'var(--muted)'}">${r.ma.toFixed(1)} vs ${r.mb.toFixed(1)} <span class="muted">(${r.na}/${r.nb} days)</span></span></div>`).join('')+'<div class="muted" style="font-size:11px;margin-top:6px">Average mood out of 5 on days with vs without. Correlation, not proof — but worth noticing.</div>':'<div class="empty">Not enough variety yet — keep logging.</div>'; }
-function renderEvents(){ const ev=(S.events||[]).slice(-60).reverse(); document.getElementById('eventLog').innerHTML=ev.length?ev.map(e=>`<div class="evt"><span class="d">${e.d.slice(5)} ${e.t}</span><div><b>${esc(e.h)}</b> ${esc(e.p)}</div></div>`).join(''):'<div class="empty">Nothing logged yet.</div>'; }
+function renderEvents(){ const ev=(S.events||[]).slice(-(window._evAll?80:10)).reverse(); document.getElementById('eventLog').innerHTML=ev.length?ev.map(e=>`<div class="evt"><span class="d">${e.d.slice(5)} ${e.t}</span><div><b>${esc(e.h)}</b> ${esc(e.p)}</div></div>`).join('')+((S.events||[]).length>10?`<a href="#" class="muted" style="font-size:12px;display:inline-block;padding:8px 0" onclick="window._evAll=!window._evAll;renderEvents();return false">${window._evAll?'Show less ▴':'Show more ▾'}</a>`:''):'<div class="empty">Nothing logged yet.</div>'; }
 function renderAch(){
   const n=Object.keys(S.ach).length; document.getElementById('achCount').textContent=n+' / '+ACH.length;
   document.getElementById('achGrid').innerHTML=ACH.map(a=>S.ach[a.id]?`<div class="tile on"><div><b>${a.name}</b><span>${esc(a.q)}</span></div></div>`:`<div class="tile"><div><div class="q">?</div>${a.name}</div></div>`).join('');

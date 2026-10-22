@@ -20,6 +20,7 @@
 
 ## What an agent is allowed to do
 - Edit `index.html` / `system-levelling.html` and ship as a plain upload.
+- The 'Write Android sources' run block is ~18.8k chars; split it into a third step before adding more source files.
 - Edit the workflow YAML for wrapper changes — then validate with `actionlint`, keep every `run:` block under 21,000 chars and free of `${{ }}` (use `$GITHUB_RUN_NUMBER`), and simulate the "Assemble" and "Write Android sources" steps locally before shipping.
 - Add exercises, workouts, lessons, goals, achievements, skill-tree actions.
 
