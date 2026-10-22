@@ -19,6 +19,6 @@ Open app → day rollover applies yesterday's penalties/credits → strip shows 
 ## Key numbers (don't change casually)
 - XP per level: Subcategory 150·1.07^(L−1), Skill 600·1.08^(L−1), Character 4000·1.08^(L−1). Fast/slow subcategories ×0.8 / ×1.3.
 - Task XP: Easy 8 · Medium 38 · Hard 150. Primary subcategory 100%, secondaries 25%.
-- HP 1000; −100 per day under the quest threshold (default 6); flawless day +50; 0 HP = XP ×0.5 until 300.
+- HP 1000; −100 per day under the quest threshold (default 6). Heals: day at threshold +20, 80% +50, flawless +100; gates +30/50/80; emergency +40; boss +150; goal +25; recovery +10; potion +100; pass streak +10/day (max 50), +100 every 7th day, shield every 30th. In-day cap 150. 0 HP = XP ×0.5 until 300.
 - Ranks: E 1 · D 10 · C 20 · B 30 · A 40 · S 50 · National 75 · Monarch 100+ (tiers every 25). Forms every 5 levels to 100.
 - Weekly boss HP = 14-day average XP × 7 × 1.15 (min 1500).
