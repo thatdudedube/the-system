@@ -125,7 +125,6 @@ jobs:
               </queries>
               <application android:label="The System" android:icon="@mipmap/ic_launcher" android:allowBackup="true" android:supportsRtl="true" android:theme="@android:style/Theme.Material.NoActionBar">
                   <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden|uiMode" android:windowSoftInputMode="adjustResize">
-                      <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts"/>
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
@@ -141,6 +140,9 @@ jobs:
                       </intent-filter>
                   </activity-alias>
                   <activity android:name=".QuickActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:excludeFromRecents="true" android:noHistory="true"/>
+                  <activity android:name=".LogWater" android:label="Water +1" android:icon="@drawable/ic_drop" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:excludeFromRecents="true" android:noHistory="true" android:taskAffinity=""/>
+                  <activity android:name=".LogTeeth" android:label="Teeth +1" android:icon="@drawable/ic_tooth" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:excludeFromRecents="true" android:noHistory="true" android:taskAffinity=""/>
+                  <activity android:name=".LogStairs" android:label="Stairs +1" android:icon="@drawable/ic_stairs" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:excludeFromRecents="true" android:noHistory="true" android:taskAffinity=""/>
                   <service android:name=".WaterTile" android:exported="true" android:icon="@drawable/ic_drop" android:label="Water +1" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"><intent-filter><action android:name="android.service.quicksettings.action.QS_TILE"/></intent-filter></service>
                   <service android:name=".TeethTile" android:exported="true" android:icon="@drawable/ic_tooth" android:label="Teeth +1" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"><intent-filter><action android:name="android.service.quicksettings.action.QS_TILE"/></intent-filter></service>
                   <service android:name=".StairsTile" android:exported="true" android:icon="@drawable/ic_stairs" android:label="Stairs +1" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"><intent-filter><action android:name="android.service.quicksettings.action.QS_TILE"/></intent-filter></service>
@@ -454,10 +456,12 @@ jobs:
           import android.widget.Toast;
 
           public class QuickActivity extends Activity {
+              protected String fixedKey() { return null; }
+
               @Override
               protected void onCreate(Bundle b) {
                   super.onCreate(b);
-                  String key = getIntent().getStringExtra("key");
+                  String key = fixedKey() != null ? fixedKey() : getIntent().getStringExtra("key");
                   if (key != null) {
                       int n = QuickLogReceiver.bump(this, key);
                       String label = key.equals("water") ? "Water " + n + "/8 cups" : key.equals("teeth") ? "Brush & floss " + n + "/2" : "Stairs " + n + "/20 flights";
@@ -467,6 +471,27 @@ jobs:
                   }
                   finish();
               }
+          }
+          EOF
+          cat > $A/java/uk/thesystem/app/LogWater.java <<'EOF'
+          package uk.thesystem.app;
+
+          public class LogWater extends QuickActivity {
+              @Override protected String fixedKey() { return "water"; }
+          }
+          EOF
+          cat > $A/java/uk/thesystem/app/LogTeeth.java <<'EOF'
+          package uk.thesystem.app;
+
+          public class LogTeeth extends QuickActivity {
+              @Override protected String fixedKey() { return "teeth"; }
+          }
+          EOF
+          cat > $A/java/uk/thesystem/app/LogStairs.java <<'EOF'
+          package uk.thesystem.app;
+
+          public class LogStairs extends QuickActivity {
+              @Override protected String fixedKey() { return "stairs"; }
           }
           EOF
           cat > $A/java/uk/thesystem/app/BaseTile.java <<'EOF'
