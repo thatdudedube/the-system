@@ -34,8 +34,8 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--sys);outli
 .win::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
 .win::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
 .win h2{font-size:20px;color:var(--sys);margin-bottom:8px}
-.win.col>h2{cursor:pointer;margin-bottom:0}.win.col>h2::after{content:' ▾';color:var(--muted);font-size:14px}.win.col.open>h2{margin-bottom:8px}.win.col.open>h2::after{content:' ▴'}
-.win.col>*:not(h2){display:none}.win.col.open>*:not(h2){display:block}
+.win.col>h2,.win.col>.row>h2{cursor:pointer;margin-bottom:0;-webkit-tap-highlight-color:transparent}.win.col>h2::after,.win.col>.row>h2::after{content:' ▾';color:var(--muted);font-size:14px}.win.col.open>h2{margin-bottom:8px}.win.col.open>h2::after,.win.col.open>.row>h2::after{content:' ▴'}
+.win.col:not(.open)>*:not(:first-child){display:none!important}
 .mood{display:flex;gap:6px;margin-bottom:12px}.mood button{flex:1;font-size:26px;padding:8px 0;min-height:48px;background:var(--panel2);border:1px solid var(--line);filter:grayscale(.6);opacity:.7}.mood button.on{filter:none;opacity:1;border-color:var(--sys);box-shadow:0 0 12px -2px var(--sysglow)}
 textarea{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:8px 10px;width:100%;min-height:90px}
 .meal{border:1px solid var(--line);background:var(--panel2);padding:10px 12px;margin-bottom:10px}.meal h3{font-size:18px;color:var(--sys);display:flex;justify-content:space-between}.meal h3 span{color:var(--gold)}
@@ -265,7 +265,7 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
       <div class="row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)"><span class="muted" id="restInfo"></span><button class="btn sm" id="restBtn" onclick="takeRestDay()">Take a rest day</button></div>
     </div>
     <div class="win col" id="todoWin">
-      <h2 onclick="toggleWin('todoWin')">To-do <small id="todoCount"></small></h2>
+      <h2>To-do <small id="todoCount"></small></h2>
       <div class="row" style="gap:6px;flex-wrap:nowrap"><input id="td-text" style="flex:1;min-width:0" placeholder="Something to get done" onkeydown="if(event.key==='Enter')addTodo()"><button class="btn primary" style="flex:none" onclick="addTodo()">Add</button></div>
       <a href="#" class="muted" style="font-size:12px;display:inline-block;padding:8px 0" onclick="const o=document.getElementById('td-opts');o.style.display=o.style.display==='none'?'grid':'none';return false">Options: difficulty, skill, due date ▾</a>
       <div id="td-opts" style="display:none;grid-template-columns:1fr 1fr;gap:6px"><select id="td-diff"><option value="easy">Easy · 8 XP</option><option value="medium" selected>Medium · 38 XP</option><option value="hard">Hard · 150 XP</option></select><input id="td-due" type="date" title="Due (optional)"><select id="td-sub" style="grid-column:1/-1"></select></div>
@@ -273,7 +273,7 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
       <div id="todoDone" style="margin-top:8px"></div>
     </div>
     <div class="win col" id="jrnWin">
-      <h2 onclick="toggleWin('jrnWin')">Journal <small id="jrnState"></small></h2>
+      <h2>Journal <small id="jrnState"></small></h2>
       <label>Today's thoughts <span class="muted">· 15 XP → Expression</span></label>
       <textarea id="jrnText" placeholder="What's on your mind today?"></textarea>
       <label>I'm the luckiest man alive because… <span class="muted">· 15 XP → Positivity</span></label>
@@ -283,21 +283,21 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
       <div id="jrnPast" style="margin-top:12px"></div>
     </div>
     <div class="win col" id="trkWin">
-      <h2 onclick="toggleWin('trkWin')">Daily trackers <small>tap as you go</small></h2>
+      <h2>Daily trackers <small>tap as you go</small></h2>
       <div id="trackers"></div>
     </div>
     <div class="win tree col" id="treeWin">
-      <h2 onclick="toggleWin('treeWin')">Skill tree <small>one-off actions · Do now for XP today, + Daily to add to your list</small></h2>
+      <h2>Skill tree <small>one-off actions · Do now for XP today, + Daily to add to your list</small></h2>
       <div id="skillTree"></div>
       <button class="btn sm" style="margin-top:8px" onclick="openSkillItemModal()">Add your own action</button>
     </div>
     <div class="win col" id="questWin">
-      <h2 onclick="toggleWin('questWin')">Quests <small>finite, with a bonus on completion</small></h2>
+      <h2>Quests <small>finite, with a bonus on completion</small></h2>
       <div id="questList"></div>
       <button class="btn sm" style="margin-top:10px" onclick="openQuestModal()">New quest</button>
     </div>
     <div class="win col" id="projWin">
-      <h2 onclick="toggleWin('projWin')">Projects <small>ongoing · XP per session</small></h2>
+      <h2>Projects <small>ongoing · XP per session</small></h2>
       <div id="projectList"></div>
       <button class="btn sm" style="margin-top:10px" onclick="openProjectModal()">New project</button>
     </div>
@@ -549,7 +549,6 @@ const DEFAULT_TASKS = [
   {name:'Push-ups', diff:'medium', primary:'Strength', secondary:['Aesthetic','Energy'], essential:false, link:{ex:'pushups',target:30,scale:{stat:'Strength',base:30,per:5,cap:200}}},
   {name:'Plank', diff:'easy', primary:'Fitness', secondary:['Strength'], essential:false, link:{ex:'plank',target:30,scale:{stat:'Fitness',base:30,per:5,cap:180}}},
   {name:'Cold shower', diff:'medium', primary:'Grit', secondary:['Resilience','Recovery'], essential:false},
-  {name:'Run', diff:'hard', primary:'Fitness', secondary:['Energy','Grit'], essential:false, link:{ex:'run',target:2,scale:{stat:'Fitness',base:2,per:0.25,cap:10}}},
   {name:'Read 20 pages', diff:'medium', primary:'Knowledge', secondary:['Curiosity','Focus'], essential:true},
   {name:'10 minutes of meditation', diff:'easy', primary:'Inner Peace', secondary:['Balance'], essential:false},
   {name:'Drink 2 litres of water', diff:'easy', primary:'Nutrition', secondary:['Longevity'], essential:false, link:{ex:'tracker:water',target:8}},
@@ -645,7 +644,8 @@ function fresh(){
 }
 function load(){ try{const r=localStorage.getItem(KEY); S=r?JSON.parse(r):fresh();}catch(e){S=fresh();} if(!S.day1){S.day1=snapshot();} S.sets=S.sets||[]; S.customEx=S.customEx||[]; S.title=S.title||'Newly awakened'; if(!S.avatar) S.avatar=DEFAULT_AVATAR; S.avatars=S.avatars||{};
   if(!S.scaleMigrated){ S.scaleMigrated=true; for(const t of S.tasks){ if(t.link&&!t.link.scale){ if(t.link.ex==='pushups'){t.link.scale={stat:'Strength',base:30,per:5,cap:200}; if(/^\d+ push/i.test(t.name)) t.name='Push-ups';} else if(t.link.ex==='plank'){t.link.scale={stat:'Fitness',base:30,per:5,cap:180}; if(/minute plank/i.test(t.name)) t.name='Plank';} else if(t.link.ex==='run'){t.link.scale={stat:'Fitness',base:2,per:0.25,cap:10}; if(/run \d/i.test(t.name)) t.name='Run';} } } }
-  S.threshold=S.threshold||6; if(!S.tasksV2){ S.tasksV2=true; for(const t of [{name:'Make your bed',diff:'easy',primary:'Self-Discipline',secondary:['Balance']},{name:'Facial cleanse before bed',diff:'easy',primary:'Aesthetic',secondary:['Longevity','Self-Discipline']},{name:'Lymphatic drainage face exercises',diff:'easy',primary:'Aesthetic',secondary:['Longevity','Recovery']}]) if(!S.tasks.some(x=>x.name===t.name)) S.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,5),...t,essential:false,streak:0,best:0,last:null}); } for(const t of S.tasks){ if(!t.link&&/water/i.test(t.name)) t.link={ex:'tracker:water',target:8}; } S.habits=S.habits||{}; S.goalsDone=S.goalsDone||{}; S.manualGoals=S.manualGoals||[{id:'g1',name:'Call family',xp:150,primary:'Positivity',target:1,period:'week'},{id:'g2',name:'Deep clean the room',xp:200,primary:'Self-Discipline',target:1,period:'week'},{id:'g3',name:'Review finances',xp:400,primary:'Logic',target:1,period:'month'}]; S.manualCounts=S.manualCounts||{}; S.customSkill=S.customSkill||[]; if(S.workouts&&!S.workouts.some(w=>w.id==='w2')) S.workouts.unshift({id:'w2',name:'50-rep kettlebell circuit',rounds:1,items:[{ex:'kb_goblet',variant:'16 kg',amt:50},{ex:'kb_row',variant:'16 kg',amt:50},{ex:'kb_halo',variant:'16 kg',amt:50},{ex:'kb_press',variant:'16 kg',amt:50},{ex:'kb_tri',variant:'16 kg',amt:50}]}); S.backups=S.backups||[]; S.events=S.events||[]; S.ui=S.ui||{open:{trkWin:true,questWin:true,jrnWin:true}}; if(S.ui.open&&S.ui.open.jrnWin===undefined) S.ui.open.jrnWin=true; if(S.ui.open&&S.ui.open.todoWin===undefined) S.ui.open.todoWin=true; S.todos=S.todos||[];
+  S.threshold=S.threshold||6; if(!S.tasksV2){ S.tasksV2=true; for(const t of [{name:'Make your bed',diff:'easy',primary:'Self-Discipline',secondary:['Balance']},{name:'Facial cleanse before bed',diff:'easy',primary:'Aesthetic',secondary:['Longevity','Self-Discipline']},{name:'Lymphatic drainage face exercises',diff:'easy',primary:'Aesthetic',secondary:['Longevity','Recovery']}]) if(!S.tasks.some(x=>x.name===t.name)) S.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,5),...t,essential:false,streak:0,best:0,last:null}); } for(const t of S.tasks){ if(!t.link&&/water/i.test(t.name)) t.link={ex:'tracker:water',target:8}; } S.habits=S.habits||{}; S.goalsDone=S.goalsDone||{}; S.manualGoals=S.manualGoals||[{id:'g3',name:'Review finances',xp:400,primary:'Logic',target:1,period:'month'}]; S.manualCounts=S.manualCounts||{}; S.customSkill=S.customSkill||[]; if(S.workouts&&!S.workouts.some(w=>w.id==='w2')) S.workouts.unshift({id:'w2',name:'50-rep kettlebell circuit',rounds:1,items:[{ex:'kb_goblet',variant:'16 kg',amt:50},{ex:'kb_row',variant:'16 kg',amt:50},{ex:'kb_halo',variant:'16 kg',amt:50},{ex:'kb_press',variant:'16 kg',amt:50},{ex:'kb_tri',variant:'16 kg',amt:50}]}); S.backups=S.backups||[]; S.events=S.events||[]; S.ui=S.ui||{open:{trkWin:true,questWin:true,jrnWin:true}}; if(S.ui.open&&S.ui.open.jrnWin===undefined) S.ui.open.jrnWin=true; if(S.ui.open&&S.ui.open.todoWin===undefined) S.ui.open.todoWin=true; S.todos=S.todos||[];
+  if(!S.cleanup1022){ S.cleanup1022=true; S.tasks=S.tasks.filter(t=>!(t.link&&t.link.ex==='run')&&t.name!=='Run'); S.manualGoals=(S.manualGoals||[]).filter(g=>!['g1','g2','g_reset'].includes(g.id)&&!/call family|room reset|^deep clean the room$/i.test(g.name)); }
   if(!S.quests.some(q=>q.id==='qdeepclean')){ S.quests.unshift({id:'qdeepclean',name:'Deep clean the room (7 years overdue)',main:true,bonus:5000,stepXp:60,skill:'Psyche',primary:'Self-Discipline',status:'open',steps:[
     'Take a "before" photo of the whole room — this is the one you will look back on',
     'Set up three bags or boxes and label them: KEEP · DONATE · BIN',
@@ -666,8 +666,8 @@ function load(){ try{const r=localStorage.getItem(KEY); S=r?JSON.parse(r):fresh(
     'Wash the bedding and remake the bed',
     'Give every kept item a permanent, labelled home',
     'Take the "after" photo next to the "before" one',
-    'Add a 15-minute weekly room reset to your weekly tasks and do the first one'].map(t=>({t,d:false}))}); 
-    if(!S.manualGoals.some(g=>g.id==='g_reset')) S.manualGoals.push({id:'g_reset',name:'15-minute room reset',xp:150,primary:'Self-Discipline',target:1,period:'week'}); } S.titles=S.titles||['Newly awakened']; S.boxes=S.boxes||0; S.emergency=S.emergency||null; S.boss=S.boss||null; S.dungeon=S.dungeon||null; S.mood=S.mood||{}; S.learn=S.learn||{}; S.srs=S.srs||{}; S.practice=S.practice||{}; S.notes=S.notes||{}; ensureWorkouts(); S.journal=S.journal||{}; S.food=S.food||{}; S.kcalTarget=S.kcalTarget||1700; S.foodFav=S.foodFav||[]; S.dungeonBest=S.dungeonBest||{}; S.workouts=S.workouts||[{id:'w2',name:'50-rep kettlebell circuit',rounds:1,items:[{ex:'kb_goblet',variant:'16 kg',amt:50},{ex:'kb_row',variant:'16 kg',amt:50},{ex:'kb_halo',variant:'16 kg',amt:50},{ex:'kb_press',variant:'16 kg',amt:50},{ex:'kb_tri',variant:'16 kg',amt:50}]},{id:'w1',name:'20-min kettlebell EMOM',rounds:4,items:[{ex:'kb_clean',variant:'16 kg',amt:15},{ex:'kb_swing',variant:'16 kg',amt:10},{ex:'pushups',variant:'Standard',amt:15},{ex:'kb_thruster',variant:'16 kg',amt:10},{ex:'kb_highpull',variant:'16 kg',amt:15}]}]; S.restDays=S.restDays||{}; S.booksRead=S.booksRead||{}; S.reminder=S.reminder||{on:true,time:'21:00'}; S.quickLog=false; if(!S.foodMerged){ S.foodMerged=true; S.tasks=S.tasks.filter(t=>!/healthy (lunch|dinner)/i.test(t.name)); if(!S.tasks.some(t=>t.link&&t.link.ex==='tracker:food')) S.tasks.push({id:'tfood',name:'Healthy eating',diff:'medium',primary:'Nutrition',secondary:['Longevity','Self-Discipline'],essential:false,link:{ex:'tracker:food',target:1},streak:0,best:0,last:null}); } if(S.avatars.hunter&&!S.avatars.f5){S.avatars.f5=S.avatars.hunter;} if(!S.avatars.f5) S.avatars.f5=DEFAULT_AVATAR; for(const k in FORM_IMAGES) if(!S.avatars[k]||!S.customAvatars||!S.customAvatars[k]) S.avatars[k]=FORM_IMAGES[k];
+    'Do a final 15-minute tidy and decide where new things will live from now on'].map(t=>({t,d:false}))}); 
+    } S.titles=S.titles||['Newly awakened']; S.boxes=S.boxes||0; S.emergency=S.emergency||null; S.boss=S.boss||null; S.dungeon=S.dungeon||null; S.mood=S.mood||{}; S.learn=S.learn||{}; S.srs=S.srs||{}; S.practice=S.practice||{}; S.notes=S.notes||{}; ensureWorkouts(); S.journal=S.journal||{}; S.food=S.food||{}; S.kcalTarget=S.kcalTarget||1700; S.foodFav=S.foodFav||[]; S.dungeonBest=S.dungeonBest||{}; S.workouts=S.workouts||[{id:'w2',name:'50-rep kettlebell circuit',rounds:1,items:[{ex:'kb_goblet',variant:'16 kg',amt:50},{ex:'kb_row',variant:'16 kg',amt:50},{ex:'kb_halo',variant:'16 kg',amt:50},{ex:'kb_press',variant:'16 kg',amt:50},{ex:'kb_tri',variant:'16 kg',amt:50}]},{id:'w1',name:'20-min kettlebell EMOM',rounds:4,items:[{ex:'kb_clean',variant:'16 kg',amt:15},{ex:'kb_swing',variant:'16 kg',amt:10},{ex:'pushups',variant:'Standard',amt:15},{ex:'kb_thruster',variant:'16 kg',amt:10},{ex:'kb_highpull',variant:'16 kg',amt:15}]}]; S.restDays=S.restDays||{}; S.booksRead=S.booksRead||{}; S.reminder=S.reminder||{on:true,time:'21:00'}; S.quickLog=false; if(!S.foodMerged){ S.foodMerged=true; S.tasks=S.tasks.filter(t=>!/healthy (lunch|dinner)/i.test(t.name)); if(!S.tasks.some(t=>t.link&&t.link.ex==='tracker:food')) S.tasks.push({id:'tfood',name:'Healthy eating',diff:'medium',primary:'Nutrition',secondary:['Longevity','Self-Discipline'],essential:false,link:{ex:'tracker:food',target:1},streak:0,best:0,last:null}); } if(S.avatars.hunter&&!S.avatars.f5){S.avatars.f5=S.avatars.hunter;} if(!S.avatars.f5) S.avatars.f5=DEFAULT_AVATAR; for(const k in FORM_IMAGES) if(!S.avatars[k]||!S.customAvatars||!S.customAvatars[k]) S.avatars[k]=FORM_IMAGES[k];
   for(const t of S.tasks){ if(!t.link){ if(/push-?ups?/i.test(t.name)) t.link={ex:'pushups',target:parseInt(t.name)||100}; else if(/plank/i.test(t.name)) t.link={ex:'plank',target:60}; else if(/run/i.test(t.name)&&/km/i.test(t.name)) t.link={ex:'run',target:parseFloat(t.name.match(/[\d.]+/)?.[0])||5}; } } }
 function save(){ try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){} try{ if(S&&S.reminder) syncReminder(); if(S) syncQuickLog(); }catch(e){} }
 function today(d=new Date()){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -857,18 +857,16 @@ const habitSumIn=(id,f)=>Object.entries(S.habits).filter(([d,h])=>f(d)).reduce((
 const flawlessIn=f=>Object.keys(S.recap).filter(d=>f(d)&&d<today()&&S.tasks.length&&S.tasks.every(t=>S.log.some(e=>e.task===t.id&&e.date===d))).length;
 const puTarget=()=>{const t=S.tasks.find(t=>t.link&&t.link.ex==='pushups'); return t?targetOf(t):30;};
 const AUTO_GOALS=[
-  {id:'w_bad',period:'week',name:'Badminton 3 sessions',target:3,xp:400,primary:'Fitness',prog:f=>sessionsIn('badminton',f)},
+  {id:'w_bad',period:'week',name:'Badminton 2 sessions',target:2,xp:300,primary:'Fitness',prog:f=>sessionsIn('badminton',f)},
   {id:'w_pu',period:'week',name:()=>'Push-ups · 5× daily target',target:()=>puTarget()*5,xp:300,primary:'Strength',prog:f=>amountIn('pushups',f)},
-  {id:'w_run',period:'week',name:'Run 15 km',target:15,xp:400,primary:'Fitness',prog:f=>amountIn('run',f)},
   {id:'w_eat',period:'week',name:'Clean eating · 6 days under target',target:6,xp:500,primary:'Nutrition',prog:f=>mealsIn(f)},
   {id:'w_teeth',period:'week',name:'Brush & floss twice a day, 7 days',target:7,xp:300,primary:'Longevity',prog:f=>habitDaysIn('teeth',f)},
   {id:'w_water',period:'week',name:'Water · 56 cups',target:56,xp:300,primary:'Nutrition',prog:f=>habitSumIn('water',f)},
   {id:'w_stairs',period:'week',name:'Stairs · 100 flights',target:100,xp:250,primary:'Fitness',prog:f=>habitSumIn('stairs',f)},
   {id:'w_steps',period:'week',name:'70,000 steps',target:70000,xp:350,primary:'Fitness',prog:f=>habitSumIn('steps',f)},
   {id:'w_flaw',period:'week',name:'5 flawless days',target:5,xp:600,primary:'Self-Discipline',prog:f=>flawlessIn(f)},
-  {id:'m_bad',period:'month',name:'Badminton 12 sessions',target:12,xp:1500,primary:'Fitness',prog:f=>sessionsIn('badminton',f)},
+  {id:'m_bad',period:'month',name:'Badminton 8 sessions',target:8,xp:1100,primary:'Fitness',prog:f=>sessionsIn('badminton',f)},
   {id:'m_pu',period:'month',name:()=>'Push-ups · 20× daily target',target:()=>puTarget()*20,xp:1200,primary:'Strength',prog:f=>amountIn('pushups',f)},
-  {id:'m_run',period:'month',name:'Run 60 km',target:60,xp:1500,primary:'Fitness',prog:f=>amountIn('run',f)},
   {id:'m_eat',period:'month',name:'Clean eating · 24 days under target',target:24,xp:1800,primary:'Nutrition',prog:f=>mealsIn(f)},
   {id:'m_teeth',period:'month',name:'Brush & floss twice a day, 28 days',target:28,xp:1000,primary:'Longevity',prog:f=>habitDaysIn('teeth',f)},
   {id:'m_steps',period:'month',name:'300,000 steps',target:300000,xp:1400,primary:'Fitness',prog:f=>habitSumIn('steps',f)},
@@ -1014,8 +1012,11 @@ function renderPlayer(){
     <div style="margin-top:12px">${Object.keys(SKILLS).map(k=>{const L=skillLevel(S,k); const d1=(S.day1||{})[k]||1; return `<div class="statrow"><b>${k.toUpperCase()}</b><span class="v">${L.lvl}${L.lvl>d1?`<small>+${L.lvl-d1}</small>`:''}</span></div>`;}).join('')}</div>
     <div class="muted" style="font-size:12px;margin-top:10px">${Object.keys(S.ach).length} achievements · ${fmt(charXP(S))} lifetime XP</div>`;
 }
-function toggleWin(id){ S.ui.open=S.ui.open||{}; S.ui.open[id]=!S.ui.open[id]; save(); applyWins(); }
-function applyWins(){ for(const id of ['trkWin','questWin','treeWin','projWin','jrnWin','todoWin']){ const el=document.getElementById(id); if(el) el.classList.toggle('open',!!(S.ui.open||{})[id]); } }
+function toggleWin(id){ const w=document.getElementById(id); S.ui.open=S.ui.open||{}; S.ui.open[id]=!(w&&w.classList.contains('open')); save(); applyWins(); }
+const CLOSED_BY_DEFAULT=['treeWin','projWin'];
+function initWins(){ document.querySelectorAll('section.view').forEach(sec=>{ sec.querySelectorAll(':scope > .win').forEach((w,i)=>{ if(!w.id) w.id='win_'+sec.id+'_'+i; w.classList.add('col'); }); }); }
+function applyWins(){ S.ui.open=S.ui.open||{}; document.querySelectorAll('.win.col').forEach(w=>{ const v=S.ui.open[w.id]; w.classList.toggle('open', v===undefined?!CLOSED_BY_DEFAULT.includes(w.id):!!v); }); }
+document.addEventListener('click',e=>{ const h=e.target.closest('.win.col > h2, .win.col > .row > h2'); if(!h||e.target.closest('button,a,input,select')) return; const w=h.closest('.win.col'); S.ui.open=S.ui.open||{}; S.ui.open[w.id]=!w.classList.contains('open'); save(); applyWins(); });
 function addTodo(){ const t=document.getElementById('td-text').value.trim(); if(!t) return; S.todos.push({id:'d'+Date.now(),text:t,diff:document.getElementById('td-diff').value,sub:document.getElementById('td-sub').value||'Self-Discipline',due:document.getElementById('td-due').value||null,done:null,created:today()}); document.getElementById('td-text').value=''; document.getElementById('td-due').value=''; save(); render(); }
 function doneTodo(id){ const d=S.todos.find(x=>x.id===id); if(!d||d.done) return; d.done=today(); const b=charLevel(S).lvl, bs=skillLevel(S,SUB_SKILL[d.sub]).lvl; const late=d.due&&d.done>d.due; const xp=Math.round(DIFF[d.diff].xp*(late?.5:1)*weakMult()); S.log.push({task:d.id,date:today(),sub:d.sub,xp}); recomputeRecap(today()); sys('To-do done',d.text+' · +'+xp+' XP → '+d.sub+(late?' (late, half XP)':'')); checkLevels(b,bs,SUB_SKILL[d.sub]); save(); checkAch(); render(); }
 function undoTodo(id){ const d=S.todos.find(x=>x.id===id); if(!d||!d.done) return; S.log=S.log.filter(e=>e.task!==id); recomputeRecap(d.done); d.done=null; save(); render(); }
@@ -1382,7 +1383,7 @@ function resetAll(){ confirmBox('Erase all progress? This cannot be undone.').th
 
 /* ========= NAV / INIT ========= */
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{ document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); document.querySelectorAll('.view').forEach(v=>v.classList.remove('on')); document.getElementById('v-'+b.dataset.v).classList.add('on'); window.scrollTo(0,0); });
-load(); rollover(); pullQuickLogs(); renderDungeon(); ensureBoss(); spawnEmergency(); checkEmergency(); checkAch(); render(); lockScreen(); setInterval(()=>{ checkEmergency(); renderEmergency(); },60000);
+initWins(); load(); rollover(); pullQuickLogs(); renderDungeon(); ensureBoss(); spawnEmergency(); checkEmergency(); checkAch(); render(); lockScreen(); setInterval(()=>{ checkEmergency(); renderEmergency(); },60000);
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){ navigator.serviceWorker.register('sw.js').catch(()=>{}); } if(window.Android&&Android.requestSteps){ setTimeout(()=>Android.requestSteps(),800); }
 </script>
 </body>

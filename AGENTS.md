@@ -14,6 +14,7 @@
 - `rollover()` — the midnight engine: penalties, credits, streak resets, rest days.
 - `EXERCISES`, `NEWW` (workouts), `TRACKERS`, `AUTO_GOALS`, `SKILL_TREE`, `ACH`, `TITLES`, `BOOKS`, `TEASERS`, `TRACKS` (lessons), `APPLY` (apply-it quests), `EMERGENCIES`, `BOSSES`.
 - `S.todos` (to-do list), `S.notes` (three-pass notes), `S.practice`, `S.srs` (spaced repetition) — learning/to-do state.
+- Every `section.view > .win` is collapsible: `initWins()` gives it an id, the heading click toggles `S.ui.open[id]`; `CLOSED_BY_DEFAULT` lists exceptions.
 - Overlays push a history entry so Android back closes them (`OVERLAYS`, `pushOverlay`, popstate handler).
 - `render()` calls every `renderX()`; add a new section by adding a `renderX()` and calling it there.
 - `window.Android` bridge (APK only): `saveFile`, `setReminder`, `requestSteps`/`onSteps`, `setQuickLog`/`pullQuickLogs`. Always guard with `if(window.Android && Android.fn)`.
