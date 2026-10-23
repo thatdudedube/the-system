@@ -14,6 +14,8 @@
 - `rollover()` — the midnight engine: penalties, credits, streak resets, rest days.
 - `EXERCISES`, `NEWW` (workouts), `TRACKERS`, `AUTO_GOALS`, `SKILL_TREE`, `ACH`, `TITLES`, `BOOKS`, `TEASERS`, `TRACKS` (lessons), `APPLY` (apply-it quests), `EMERGENCIES`, `BOSSES`.
 - `S.todos` (to-do list), `S.notes` (three-pass notes), `S.practice`, `S.srs` (spaced repetition) — learning/to-do state.
+- `APP_BUILD` is 0 in the repo and replaced by sed in the workflow; never hard-code a number. `weakMult()` is HP-tiered — use it for every XP grant.
+- `S.goalOv[id]` overrides auto goals (use gTarget/gXp/gPrim/gName/gHidden, never g.target directly). `S.customSubs` are pushed into SKILLS/SUB_SKILL/ALL_SUBS by `applyCustomSubs()` right after `load()`.
 - Every `section.view > .win` is collapsible: `initWins()` gives it an id, the heading click toggles `S.ui.open[id]`; `CLOSED_BY_DEFAULT` lists exceptions.
 - Overlays push a history entry so Android back closes them (`OVERLAYS`, `pushOverlay`, popstate handler).
 - `render()` calls every `renderX()`; add a new section by adding a `renderX()` and calling it there.

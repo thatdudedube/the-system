@@ -37,4 +37,5 @@ Accept: review card shows average sleep and flags weeks under 7 h.
 - Food tracker, mood, journal, weekly review, spaced repetition, apply-it (10-07/08)
 - Learning tracks 31 AI + 30 IFRS, practice modes, three-pass notes (10-07/08)
 - APK pipeline, fixed key, Health Connect steps, camera, reminders, shortcuts/tiles (10-05 → 10-08)
+- Update-available banner; simple mode; HP-tiered XP (10-23)
 - Repo docs; UX audit fixes (touch targets, back button, keypads); morning mobility; to-do list (10-11 → 10-13)
