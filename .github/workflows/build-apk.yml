@@ -21,6 +21,8 @@ jobs:
           mkdir -p $A/java/uk/thesystem/app $A/assets $A/res/mipmap-xxxhdpi
           cp index.html $A/assets/index.html
           sed -i '/serviceWorker/d' $A/assets/index.html
+          sed -i "s/const APP_BUILD=0;/const APP_BUILD=$GITHUB_RUN_NUMBER;/" $A/assets/index.html
+          grep -q "const APP_BUILD=$GITHUB_RUN_NUMBER;" $A/assets/index.html
           python3 - <<'PY'
           import re,base64
           s=open('index.html').read()
