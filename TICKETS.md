@@ -30,6 +30,15 @@ Accept: last night's sleep hours shown in trackers; weekly goal.
 **#08 Sleep and recovery into the weekly review** · pairs with #07.
 Accept: review card shows average sleep and flags weeks under 7 h.
 
+**#09 Move the signing key to GitHub secrets** · key and password are public in the repo.
+Accept: keystore + password stored as Actions secrets, removed from the repo; builds still install over the top.
+
+**#10 Tests in the build** · bugs reach the phone before they're caught.
+Accept: jsdom suite in the repo runs in Actions before the APK step; a failure blocks the release; tab screenshots attached as artefacts.
+
+**#11 Restructure** · 1 MB single file, global CSS, full re-render on every tap.
+Accept: modules bundled at build; lessons/images as separate assets; only the visible tab re-renders; schemaVersion migrations; delegated event handling.
+
 ## Done
 - Daily quests, trackers, skill tree, finite quests, projects (10-05)
 - Train log, saved workouts, dungeon gates, 50+ exercises with descriptions (10-05 → 10-08)
@@ -37,5 +46,6 @@ Accept: review card shows average sleep and flags weeks under 7 h.
 - Food tracker, mood, journal, weekly review, spaced repetition, apply-it (10-07/08)
 - Learning tracks 31 AI + 30 IFRS, practice modes, three-pass notes (10-07/08)
 - APK pipeline, fixed key, Health Connect steps, camera, reminders, shortcuts/tiles (10-05 → 10-08)
+- Day-judgement bug fixed + refund; random-time emergency quests with notifications (10-28)
 - Update-available banner; simple mode; HP-tiered XP (10-23)
 - Repo docs; UX audit fixes (touch targets, back button, keypads); morning mobility; to-do list (10-11 → 10-13)

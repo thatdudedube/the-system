@@ -161,10 +161,16 @@ body.simple #bossBox .boss>*:not(.keep){display:none}body.simple #bossBox .boss 
 .d20{width:190px;height:190px;margin:0 auto;position:relative;transition:transform .15s}
 .d20 svg{width:100%;height:100%;filter:drop-shadow(0 0 18px var(--sysglow))}
 .d20 .num{position:absolute;inset:0;display:grid;place-items:center;font-family:Rajdhani;font-weight:700;font-size:60px;color:#fff;padding-top:14px}
-.d20.spin{animation:d20spin .12s linear infinite}@keyframes d20spin{0%{transform:rotate(-8deg) scale(.96)}50%{transform:rotate(8deg) scale(1.02)}100%{transform:rotate(-8deg) scale(.96)}}
+.d20stage{position:relative;height:300px;perspective:700px;margin-top:6px}
+.d20stage .d20{position:absolute;left:50%;top:70px;margin-left:-95px;will-change:transform}
+.d20shadow{position:absolute;left:50%;top:268px;width:120px;height:18px;margin-left:-60px;border-radius:50%;background:radial-gradient(closest-side,rgba(79,163,255,.45),transparent);will-change:transform,opacity}
+.d20 .num{transition:opacity .06s}.d20 .num.blur{opacity:.55;filter:blur(1.2px)}
+.ring{position:absolute;left:50%;top:165px;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;border:3px solid var(--gold);pointer-events:none}
+.d20res>*{animation:resIn .35s ease-out both}.d20res .sm{animation-delay:.08s}@keyframes resIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.shake{animation:shake .42s cubic-bezier(.36,.07,.19,.97)}@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}}
 .d20.crit svg{filter:drop-shadow(0 0 30px #F2C14E)}.d20.crit .num{color:var(--gold)}.d20.fumble .num{color:var(--hp)}
 .d20res{min-height:90px;margin-top:18px}.d20res .big{font-family:Rajdhani;font-size:26px;font-weight:700;color:#fff}.d20res .sm{color:var(--muted);font-size:14px;margin-top:4px}
-@media (prefers-reduced-motion:reduce){.d20.spin{animation:none}}
+
 .lesson{position:fixed;inset:0;z-index:26;background:var(--bg);overflow:auto;padding:16px 14px 100px}
 .lesson .body{font-size:16px;line-height:1.65;max-width:620px;margin:0 auto}.lesson .body p{margin:0 0 14px}
 .lesson h1{font-size:26px;color:#fff;margin:6px 0 2px}
@@ -692,6 +698,11 @@ function fresh(){
 function load(){ try{const r=localStorage.getItem(KEY); S=r?JSON.parse(r):fresh();}catch(e){S=fresh();} if(!S.day1){S.day1=snapshot();} S.sets=S.sets||[]; S.customEx=S.customEx||[]; S.title=S.title||'Newly awakened'; if(!S.avatar) S.avatar=DEFAULT_AVATAR; S.avatars=S.avatars||{};
   if(!S.scaleMigrated){ S.scaleMigrated=true; for(const t of S.tasks){ if(t.link&&!t.link.scale){ if(t.link.ex==='pushups'){t.link.scale={stat:'Strength',base:30,per:5,cap:200}; if(/^\d+ push/i.test(t.name)) t.name='Push-ups';} else if(t.link.ex==='plank'){t.link.scale={stat:'Fitness',base:30,per:5,cap:180}; if(/minute plank/i.test(t.name)) t.name='Plank';} else if(t.link.ex==='run'){t.link.scale={stat:'Fitness',base:2,per:0.25,cap:10}; if(/run \d/i.test(t.name)) t.name='Run';} } } }
   S.threshold=S.threshold||6; if(!S.tasksV2){ S.tasksV2=true; for(const t of [{name:'Make your bed',diff:'easy',primary:'Self-Discipline',secondary:['Balance']},{name:'Facial cleanse before bed',diff:'easy',primary:'Aesthetic',secondary:['Longevity','Self-Discipline']},{name:'Lymphatic drainage face exercises',diff:'easy',primary:'Aesthetic',secondary:['Longevity','Recovery']}]) if(!S.tasks.some(x=>x.name===t.name)) S.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,5),...t,essential:false,streak:0,best:0,last:null}); } for(const t of S.tasks){ if(!t.link&&/water/i.test(t.name)) t.link={ex:'tracker:water',target:8}; } S.habits=S.habits||{}; S.goalsDone=S.goalsDone||{}; S.goalOv=S.goalOv||{}; S.customSubs=S.customSubs||[]; S.manualGoals=S.manualGoals||[{id:'g3',name:'Review finances',xp:400,primary:'Logic',target:1,period:'month'}]; S.manualCounts=S.manualCounts||{}; S.customSkill=S.customSkill||[]; if(S.workouts&&!S.workouts.some(w=>w.id==='w2')) S.workouts.unshift({id:'w2',name:'50-rep kettlebell circuit',rounds:1,items:[{ex:'kb_goblet',variant:'16 kg',amt:50},{ex:'kb_row',variant:'16 kg',amt:50},{ex:'kb_halo',variant:'16 kg',amt:50},{ex:'kb_press',variant:'16 kg',amt:50},{ex:'kb_tri',variant:'16 kg',amt:50}]}); S.backups=S.backups||[]; S.events=S.events||[]; S.ui=S.ui||{open:{trkWin:true,questWin:true,jrnWin:true}}; if(S.ui.open&&S.ui.open.jrnWin===undefined) S.ui.open.jrnWin=true; if(S.ui.open&&S.ui.open.todoWin===undefined) S.ui.open.todoWin=true; S.todos=S.todos||[];
+  if(!S.fix1026){ S.fix1026=true; try{ const tid=new Set(S.tasks.map(t=>t.id)); let hp=0, sh=0; const days=[];
+    for(const ev of (S.events||[])){ const m=/(\d{4}-\d\d-\d\d)/.exec(ev.p||''); if(!m) continue; const d=m[1]; const nm=/(\d+) of (?:the )?(\d+) quests/.exec(ev.p||''); if(!nm) continue; const need=+nm[2];
+      const logged=new Set(S.log.filter(e=>e.date===d&&(tid.has(e.task)||/^t\d/.test(e.task))).map(e=>e.task)).size;
+      if(logged>=need&&+nm[1]<need){ if(ev.h==='Penalty'){ hp+=100; days.push(d); } else if(ev.h==='Shield used'){ sh++; days.push(d); } } }
+    if(hp||sh){ S.hp=Math.min(MAXHP,S.hp+hp); S.tokens+=sh; S._refundMsg='Recount found '+days.length+' day'+(days.length>1?'s':'')+' wrongly judged ('+days.join(', ')+'). Refunded '+(hp?hp+' HP':'')+(hp&&sh?' and ':'')+(sh?sh+' shield'+(sh>1?'s':''):'')+'.'; } }catch(e){} }
   if(!S.cleanup1022){ S.cleanup1022=true; S.tasks=S.tasks.filter(t=>!(t.link&&t.link.ex==='run')&&t.name!=='Run'); S.manualGoals=(S.manualGoals||[]).filter(g=>!['g1','g2','g_reset'].includes(g.id)&&!/call family|room reset|^deep clean the room$/i.test(g.name)); }
   if(!S.quests.some(q=>q.id==='qdeepclean')){ S.quests.unshift({id:'qdeepclean',name:'Deep clean the room (7 years overdue)',main:true,bonus:5000,stepXp:60,skill:'Psyche',primary:'Self-Discipline',status:'open',steps:[
     'Take a "before" photo of the whole room — this is the one you will look back on',
@@ -716,7 +727,8 @@ function load(){ try{const r=localStorage.getItem(KEY); S=r?JSON.parse(r):fresh(
     'Do a final 15-minute tidy and decide where new things will live from now on'].map(t=>({t,d:false}))}); 
     } S.titles=S.titles||['Newly awakened']; S.boxes=S.boxes||0; S.emergency=S.emergency||null; S.boss=S.boss||null; S.dungeon=S.dungeon||null; S.mood=S.mood||{}; S.learn=S.learn||{}; S.srs=S.srs||{}; S.practice=S.practice||{}; S.notes=S.notes||{}; ensureWorkouts(); S.journal=S.journal||{}; S.food=S.food||{}; S.kcalTarget=S.kcalTarget||1700; S.foodFav=S.foodFav||[]; S.dungeonBest=S.dungeonBest||{}; S.workouts=S.workouts||[{id:'w2',name:'50-rep kettlebell circuit',rounds:1,items:[{ex:'kb_goblet',variant:'16 kg',amt:50},{ex:'kb_row',variant:'16 kg',amt:50},{ex:'kb_halo',variant:'16 kg',amt:50},{ex:'kb_press',variant:'16 kg',amt:50},{ex:'kb_tri',variant:'16 kg',amt:50}]},{id:'w1',name:'20-min kettlebell EMOM',rounds:4,items:[{ex:'kb_clean',variant:'16 kg',amt:15},{ex:'kb_swing',variant:'16 kg',amt:10},{ex:'pushups',variant:'Standard',amt:15},{ex:'kb_thruster',variant:'16 kg',amt:10},{ex:'kb_highpull',variant:'16 kg',amt:15}]}]; S.restDays=S.restDays||{}; S.booksRead=S.booksRead||{}; S.reminder=S.reminder||{on:true,time:'21:00'}; S.quickLog=false; if(!S.foodMerged){ S.foodMerged=true; S.tasks=S.tasks.filter(t=>!/healthy (lunch|dinner)/i.test(t.name)); if(!S.tasks.some(t=>t.link&&t.link.ex==='tracker:food')) S.tasks.push({id:'tfood',name:'Healthy eating',diff:'medium',primary:'Nutrition',secondary:['Longevity','Self-Discipline'],essential:false,link:{ex:'tracker:food',target:1},streak:0,best:0,last:null}); } if(S.avatars.hunter&&!S.avatars.f5){S.avatars.f5=S.avatars.hunter;} if(!S.avatars.f5) S.avatars.f5=DEFAULT_AVATAR; for(const k in FORM_IMAGES) if(!S.avatars[k]||!S.customAvatars||!S.customAvatars[k]) S.avatars[k]=FORM_IMAGES[k];
   for(const t of S.tasks){ if(!t.link){ if(/push-?ups?/i.test(t.name)) t.link={ex:'pushups',target:parseInt(t.name)||100}; else if(/plank/i.test(t.name)) t.link={ex:'plank',target:60}; else if(/run/i.test(t.name)&&/km/i.test(t.name)) t.link={ex:'run',target:parseFloat(t.name.match(/[\d.]+/)?.[0])||5}; } } }
-function save(){ try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){} try{ if(S&&S.reminder) syncReminder(); if(S) syncQuickLog(); }catch(e){} }
+function save(){ try{ const d=today(); S.doneDays=S.doneDays||{}; S.doneDays[d]=S.tasks.filter(t=>t.last===d).map(t=>t.id); const ks=Object.keys(S.doneDays).sort(); while(ks.length>120) delete S.doneDays[ks.shift()]; if(S.events&&S.events.length>600) S.events=S.events.slice(-500); localStorage.setItem(KEY,JSON.stringify(S)); }
+  catch(e){ if(!window._saveWarn||Date.now()-window._saveWarn>60000){ window._saveWarn=Date.now(); try{ sys('SAVE FAILED','Progress could not be stored on this phone ('+(e&&e.name||'error')+'). Export a backup from Settings now.'); }catch(_){} } } try{ if(S&&S.reminder) syncReminder(); if(S) syncQuickLog(); }catch(e){} }
 function today(d=new Date()){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function addDays(s,n){ const d=new Date(s+'T12:00:00'); d.setDate(d.getDate()+n); return today(d); }
 function dayIndex(s=S){ const a=new Date(s.start+'T12:00:00'), b=new Date(today()+'T12:00:00'); return Math.floor((b-a)/864e5)+1; }
@@ -743,15 +755,16 @@ function fmt(n){ return Math.round(n).toLocaleString('en-GB'); }
 function restUsedThisWeek(){ return Object.keys(S.restDays||{}).some(d=>inWeek(d)); }
 function takeRestDay(){ const d=today(); if(S.restDays[d]) return; if(restUsedThisWeek()){ sys('No rest day left','One per week, resets Monday.'); return; } confirmBox('Take today as a rest day? No HP penalty and all streaks are kept. One per week.').then(ok=>{ if(!ok) return; S.restDays[d]=true; sys('Rest day','Today is protected. Streaks and HP are safe.'); save(); render(); }); }
 function prevActiveDay(d){ let x=addDays(d,-1); let n=0; while(S.restDays&&S.restDays[x]&&n<14){ x=addDays(x,-1); n++; } return x; }
+function doneOn(d){ const ids=new Set((S.doneDays||{})[d]||[]); const tids=new Set(S.tasks.map(t=>t.id)); for(const t of S.tasks) if(t.last===d) ids.add(t.id); for(const e of S.log) if(e.date===d&&tids.has(e.task)) ids.add(e.task); return ids; }
 function rollover(){
   let d=S.lastProcessed; const t=today(); if(d>=t) return;
   while(d<t){
     S.recap[d]=S.recap[d]||0;
     { const ft=S.tasks.find(x=>x.link&&x.link.ex==='tracker:food'); if(ft&&ft.last!==d&&foodDay(d).length&&kcalDay(d)<=(S.kcalTarget||1700)){ ft.streak=(ft.last===prevActiveDay(d))?ft.streak+1:1; ft.best=Math.max(ft.best,ft.streak); ft.last=d; sys('Healthy eating credited',d+' was logged under target — quest counted.'); } }
-    const done=S.tasks.filter(x=>x.last===d); const need=Math.min(S.threshold||6,S.tasks.length);
+    const dn=doneOn(d); const done=S.tasks.filter(x=>dn.has(x.id)); const need=Math.min(S.threshold||6,S.tasks.length);
     if(S.tasks.length>0){ const pct=done.length/S.tasks.length; let h=0; if(done.length===S.tasks.length){ S.flawless++; h=100; } else if(pct>=.8) h=50; else if(done.length>=need) h=20; if(h){ const before=S.hp; S.hp=Math.min(MAXHP,S.hp+h); if(S.hp>before) sys('HP restored','+'+(S.hp-before)+' HP for '+d+' ('+done.length+'/'+S.tasks.length+' quests)'); } }
     if(S.restDays&&S.restDays[d]){ S.noLossDays++; d=addDays(d,1); continue; }
-    for(const x of S.tasks) if(x.last!==d) x.streak=0;
+    for(const x of S.tasks) if(!dn.has(x.id)&&(x.last||'')<=d) x.streak=0;
     if(done.length<need){
       if((S.passStreak||0)>=3) sys('Pass streak broken','Your '+S.passStreak+'-day pass streak has ended.'); S.passStreak=0;
       if(S.tokens>0){ S.tokens--; sys('Shield used','A token absorbed the penalty for '+d+' ('+done.length+' of '+need+' quests).'); S.noLossDays++; }
@@ -1152,15 +1165,42 @@ function boxOutcome(n){ const rare=['The Lucky','Gate Walker','Shadow Touched','
   return {big,sm,cls}; }
 const D20_SVG='<svg viewBox="0 0 100 100"><polygon points="50,3 93,27 93,73 50,97 7,73 7,27" fill="#0E1A3E" stroke="#4FA3FF" stroke-width="2.5"/><polygon points="50,22 78,68 22,68" fill="none" stroke="#4FA3FF" stroke-width="1.5" opacity=".9"/><path d="M50 3 L50 22 M93 27 L78 68 M7 27 L22 68 M93 73 L78 68 M7 73 L22 68 M50 97 L50 68 M50 22 L93 27 M50 22 L7 27 M22 68 L50 97 M78 68 L50 97" stroke="#4FA3FF" stroke-width="1" opacity=".45"/></svg>';
 function openBox(){ if(S.boxes<=0||document.getElementById('d20wrap')) return; S.boxes--; const n=rollD20(); const o=document.createElement('div'); o.className='d20wrap'; o.id='d20wrap';
-  o.innerHTML=`<div style="width:100%;max-width:360px"><div style="font-family:Rajdhani;letter-spacing:.3em;color:var(--sys);font-size:12px;font-weight:700">[SYSTEM] · REWARD ROLL</div><div class="d20 spin" id="d20" style="margin-top:22px">${D20_SVG}<div class="num" id="d20n">?</div></div><div class="d20res" id="d20res"><div class="sm">Rolling…</div></div><button class="btn primary" id="d20ok" style="width:100%;visibility:hidden">Collect</button><div class="muted" style="font-size:11px;margin-top:12px;line-height:1.5">1 fumble · 2–9 XP burst · 10–14 potion · 15–17 shield · 18–19 rare title · 20 critical</div></div>`;
-  document.body.appendChild(o); const die=document.getElementById('d20'), num=document.getElementById('d20n'); const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let t=0, delay=40; const steps=reduce?1:13;
-  const tick=()=>{ t++; if(t<steps){ num.textContent=1+Math.floor(Math.random()*20); delay*=1.17; setTimeout(tick,delay); return; }
-    num.textContent=n; die.classList.remove('spin'); const res=boxOutcome(n); if(res.cls) die.classList.add(res.cls); try{ navigator.vibrate&&navigator.vibrate(n===20?[60,40,60,40,140]:n===1?[200]:[40]); }catch(e){}
-    document.getElementById('d20res').innerHTML=`<div class="big" style="${n===20?'color:var(--gold)':n===1?'color:var(--hp)':''}">${res.big}</div><div class="sm">${esc(res.sm)}</div>`;
-    const ok=document.getElementById('d20ok'); ok.style.visibility='visible'; ok.onclick=()=>{ o.remove(); render(); };
+  o.innerHTML=`<div style="width:100%;max-width:360px" id="d20box"><div style="font-family:Rajdhani;letter-spacing:.3em;color:var(--sys);font-size:12px;font-weight:700">[SYSTEM] · REWARD ROLL</div>
+    <div class="d20stage" id="d20stage"><div class="d20shadow" id="d20sh"></div><div class="d20" id="d20">${D20_SVG}<div class="num" id="d20n">?</div></div></div>
+    <div class="d20res" id="d20res"></div><button class="btn primary" id="d20ok" style="width:100%;visibility:hidden">Collect</button>
+    <div class="muted" style="font-size:11px;margin-top:12px;line-height:1.5">1 fumble · 2–9 XP burst · 10–14 potion · 15–17 shield · 18–19 rare title · 20 critical</div></div>`;
+  document.body.appendChild(o); const die=document.getElementById('d20'), num=document.getElementById('d20n'), sh=document.getElementById('d20sh');
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches; const D=reduce?0:1700; const buzz=p=>{ try{ navigator.vibrate&&navigator.vibrate(p); }catch(e){} };
+  const spin=(Math.random()<.5?-1:1); const tilt=6+Math.random()*10; const endRot=spin*(1080+Math.floor(Math.random()*4)*60);
+  if(!reduce&&die.animate){
+    // toss: rise and tumble, fall, impact squash, small bounce, wobble, settle
+    die.animate([
+      {offset:0,   transform:`translateY(150px) scale(.45) rotateX(${tilt}deg) rotateZ(0deg)`, easing:'cubic-bezier(.2,.7,.3,1)'},
+      {offset:.32, transform:`translateY(-95px) scale(.9) rotateX(${-tilt}deg) rotateZ(${endRot*.45}deg)`, easing:'cubic-bezier(.55,0,.85,.4)'},
+      {offset:.56, transform:`translateY(0px) scale(1.12,.86) rotateX(0deg) rotateZ(${endRot*.82}deg)`, easing:'cubic-bezier(.2,.7,.3,1)'},
+      {offset:.68, transform:`translateY(-26px) scale(.97,1.04) rotateZ(${endRot*.93}deg)`, easing:'cubic-bezier(.55,0,.85,.4)'},
+      {offset:.79, transform:`translateY(0px) scale(1.05,.95) rotateZ(${endRot*.985}deg)`, easing:'ease-out'},
+      {offset:.88, transform:`translateY(0px) scale(1) rotateZ(${endRot+spin*-5}deg)`, easing:'ease-in-out'},
+      {offset:.95, transform:`translateY(0px) scale(1) rotateZ(${endRot+spin*2}deg)`, easing:'ease-in-out'},
+      {offset:1,   transform:`translateY(0px) scale(1) rotateZ(${endRot}deg)`}
+    ],{duration:D,fill:'forwards'});
+    sh.animate([{offset:0,transform:'scale(.3)',opacity:.15},{offset:.32,transform:'scale(.45)',opacity:.2},{offset:.56,transform:'scale(1.15)',opacity:1},{offset:.68,transform:'scale(.85)',opacity:.6},{offset:.79,transform:'scale(1.05)',opacity:.95},{offset:1,transform:'scale(1)',opacity:.9}],{duration:D,fill:'forwards'});
+    // counter-rotate the number so it stays upright
+    num.animate([{offset:0,transform:'rotate(0deg)'},{offset:.32,transform:`rotate(${-endRot*.45}deg)`},{offset:.56,transform:`rotate(${-endRot*.82}deg)`},{offset:.68,transform:`rotate(${-endRot*.93}deg)`},{offset:.79,transform:`rotate(${-endRot*.985}deg)`},{offset:.88,transform:`rotate(${-(endRot+spin*-5)}deg)`},{offset:.95,transform:`rotate(${-(endRot+spin*2)}deg)`},{offset:1,transform:`rotate(${-endRot}deg)`}],{duration:D,fill:'forwards'});
+    setTimeout(()=>buzz(25),D*.56); setTimeout(()=>buzz(12),D*.79);
+  }
+  // faces flick fast in the air, slow on the bounce, stop on landing
+  const t0=performance.now(); let last=-1;
+  const faces=()=>{ const t=(performance.now()-t0)/(D||1); if(t>=.86||!D){ return land(); } const gap=t<.5?45:t<.7?90:170; const k=Math.floor((performance.now()-t0)/gap); if(k!==last){ last=k; let f; do{ f=1+Math.floor(Math.random()*20); }while(f===+num.textContent); num.textContent=f; num.classList.toggle('blur',t<.5); } requestAnimationFrame(faces); };
+  const land=()=>{ num.classList.remove('blur'); num.textContent=n; const res=boxOutcome(n); if(res.cls) die.classList.add(res.cls);
+    const stage=document.getElementById('d20stage');
+    if(n===20&&!reduce){ for(let r=0;r<3;r++){ const ring=document.createElement('div'); ring.className='ring'; stage.appendChild(ring); ring.animate([{transform:'scale(.5)',opacity:1},{transform:'scale(7)',opacity:0}],{duration:900,delay:r*140,easing:'cubic-bezier(.1,.6,.3,1)',fill:'forwards'}); } document.getElementById('d20box').classList.add('shake'); buzz([60,40,60,40,160]); }
+    else if(n===1&&!reduce){ document.getElementById('d20box').classList.add('shake'); o.animate([{background:'rgba(90,10,25,.95)'},{background:'rgba(3,6,14,.94)'}],{duration:500}); buzz([220]); }
+    else buzz(40);
+    setTimeout(()=>{ document.getElementById('d20res').innerHTML=`<div class="big" style="${n===20?'color:var(--gold)':n===1?'color:var(--hp)':''}">${res.big}</div><div class="sm">${esc(res.sm)}</div>`;
+      const ok=document.getElementById('d20ok'); ok.style.visibility='visible'; ok.onclick=()=>{ o.remove(); render(); }; },reduce?0:D*.16);
     sys(n===20?'Natural 20':'Reward roll','Rolled '+n+': '+res.big+' · '+res.sm); save(); checkAch(); };
-  setTimeout(tick,delay); }
+  requestAnimationFrame(faces); }
 const EMERGENCIES=[
   {n:'Push-up surge',d:'Log 50 push-ups (any variation) before it expires.',xp:120,test:()=>dayTotal('pushups')>=50+(S.emergency?.base||0)},
   {n:'Hydration order',d:'Reach 8 cups of water before it expires.',xp:60,test:()=>habitCount('water')>=8},
@@ -1171,11 +1211,27 @@ const EMERGENCIES=[
   {n:'Iron minute',d:'Log a plank of at least 90 seconds before it expires.',xp:80,test:()=>S.sets.some(x=>x.ex==='plank'&&x.date===today()&&x.amt>=90)},
   {n:'Three actions',d:'Do three Skill tree actions before it expires.',xp:110,test:()=>S.log.filter(e=>e.task.startsWith('sk:')&&e.date===today()).length>=3},
 ];
-function spawnEmergency(){ const d=today(); if(S.emergency&&S.emergency.date===d) return; let h=0; for(const c of d) h=(h*33+c.charCodeAt(0))>>>0; if(h%100>=40||dayIndex()<2){ if(S.emergency&&S.emergency.date!==d) S.emergency=null; return; }
-  const e=EMERGENCIES[h%EMERGENCIES.length]; const hours=3+(h%3); S.emergency={id:h%EMERGENCIES.length,date:d,expires:Date.now()+hours*3600e3,done:false,base:e.n==='Push-up surge'?dayTotal('pushups'):e.n==='Stair gate'?habitCount('stairs'):0};
-  sys('Emergency quest','"'+e.n+'" — '+e.d+' Expires in '+hours+' h. Reward '+e.xp+' XP + reward box.'); save(); }
+function planEmergencies(){ S.emPlan=S.emPlan||{}; const now=Date.now(); const t=today();
+  if(S.emergency&&S.emergency.date===t&&!S.emPlan[t]) S.emPlan[t]={at:S.emergency.start||now-60000,id:S.emergency.id,hours:Math.round(((S.emergency.expires||now)-(S.emergency.start||now))/3600e3)||3};
+  for(let k=0;k<3;k++){ const d=addDays(t,k); if(d in S.emPlan) continue;
+    if(dayIndex()+k<3||Math.random()>=.4){ S.emPlan[d]=null; continue; }
+    const base=new Date(d+'T00:00:00').getTime(); const lo=Math.max(base+8*3600e3,k===0?now+20*60e3:0), hi=base+19*3600e3;
+    if(lo>hi){ S.emPlan[d]=null; continue; }
+    S.emPlan[d]={at:Math.round(lo+Math.random()*(hi-lo)),id:Math.floor(Math.random()*EMERGENCIES.length),hours:3+Math.floor(Math.random()*3)}; }
+  for(const k of Object.keys(S.emPlan)) if(k<addDays(t,-7)) delete S.emPlan[k];
+  syncEmergencyAlarms(); }
+function syncEmergencyAlarms(){ try{ if(!(window.Android&&Android.setEmergencies)) return; const now=Date.now(); const out=[];
+  for(const [d,p] of Object.entries(S.emPlan||{})){ if(!p) continue; const e=EMERGENCIES[p.id]; if(!e) continue; const exp=p.at+p.hours*3600e3; const cleared=S.emergency&&S.emergency.date===d&&S.emergency.done;
+    if(p.at>now) out.push({at:p.at,title:'⚠ [SYSTEM] Emergency quest',text:e.n+' — '+e.d+' '+p.hours+' h to clear. Reward '+e.xp+' XP + reward box.'});
+    if(!cleared&&exp-45*60e3>now) out.push({at:exp-45*60e3,title:'[SYSTEM] Emergency quest · 45 min left',text:e.n+' expires soon. '+e.d}); }
+  const js=JSON.stringify(out.sort((a,b)=>a.at-b.at).slice(0,20)); if(js!==window._emSent){ window._emSent=js; Android.setEmergencies(js); } }catch(e){} }
+function spawnEmergency(){ const d=today(); if(S.emergency&&S.emergency.date!==d) S.emergency=null; const p=(S.emPlan||{})[d]; if(!p||S.emergency) return; const now=Date.now(); if(now<p.at) return;
+  const e=EMERGENCIES[p.id]; const exp=p.at+p.hours*3600e3; S.emergency={id:p.id,date:d,start:p.at,expires:exp,done:false,base:e.n==='Push-up surge'?dayTotal('pushups'):e.n==='Stair gate'?habitCount('stairs'):0};
+  if(now>=exp){ S.emergency.done='expired'; sys('Emergency quest missed','"'+e.n+'" appeared at '+new Date(p.at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' and expired before you answered.'); }
+  else { const m=Math.floor((exp-now)/60000); sys('Emergency quest','"'+e.n+'" — '+e.d+' '+Math.floor(m/60)+' h '+(m%60)+' min left. Reward '+e.xp+' XP + reward box.'); }
+  save(); }
 function checkEmergency(){ const E=S.emergency; if(!E||E.done||E.date!==today()) return; const e=EMERGENCIES[E.id]; if(Date.now()>E.expires){ E.done='expired'; sys('Emergency quest failed','"'+e.n+'" expired. The System does not wait.'); save(); return; }
-  if(e.test()){ E.done=true; const xp=Math.round(e.xp*weakMult()); S.log.push({task:'emerg',date:today(),sub:'Grit',xp}); recomputeRecap(today()); S.boxes++; heal(40,'emergency quest'); sys('Emergency quest cleared','"'+e.n+'" · +'+xp+' XP → Grit · +1 reward box'); save(); } }
+  if(e.test()){ E.done=true; const xp=Math.round(e.xp*weakMult()); S.log.push({task:'emerg',date:today(),sub:'Grit',xp}); recomputeRecap(today()); S.boxes++; heal(40,'emergency quest'); syncEmergencyAlarms(); sys('Emergency quest cleared','"'+e.n+'" · +'+xp+' XP → Grit · +1 reward box'); save(); } }
 function renderEmergency(){ const E=S.emergency; let el=document.getElementById('emergBox'); if(!el){ el=document.createElement('div'); el.id='emergBox'; document.getElementById('strip').insertAdjacentElement('afterend',el); }
   if(!E||E.date!==today()){ el.innerHTML=''; return; } const e=EMERGENCIES[E.id]; const left=Math.max(0,E.expires-Date.now()); const mins=Math.floor(left/60000);
   el.innerHTML=`<div class="emerg"><h2>${E.done===true?'Emergency quest cleared':E.done==='expired'?'Emergency quest expired':'Emergency quest'}</h2><div><b>${esc(e.n)}</b> — ${esc(e.d)}</div><div class="row muted" style="font-size:12px;margin-top:4px"><span>${E.done===true?'Reward claimed':E.done==='expired'?'Failed':'Expires in '+Math.floor(mins/60)+' h '+(mins%60)+' min'}</span><span>${e.xp} XP + reward box</span></div></div>`; }
@@ -1543,7 +1599,10 @@ function resetAll(){ confirmBox('Erase all progress? This cannot be undone.').th
 
 /* ========= NAV / INIT ========= */
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{ document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); document.querySelectorAll('.view').forEach(v=>v.classList.remove('on')); document.getElementById('v-'+b.dataset.v).classList.add('on'); window.scrollTo(0,0); });
-initWins(); load(); applyCustomSubs(); rollover(); pullQuickLogs(); setTimeout(()=>checkUpdate(false),1500); setTimeout(()=>{ if(!document.getElementById('lock')) showBriefing(); },400); renderDungeon(); ensureBoss(); spawnEmergency(); checkEmergency(); checkAch(); render(); lockScreen(); setInterval(()=>{ checkEmergency(); renderEmergency(); },60000);
+initWins(); load(); applyCustomSubs(); if(S._refundMsg){ const m=S._refundMsg; delete S._refundMsg; setTimeout(()=>sys('System correction',m),1200); } rollover(); pullQuickLogs(); setTimeout(()=>checkUpdate(false),1500); setTimeout(()=>{ if(!document.getElementById('lock')) showBriefing(); },400); renderDungeon(); ensureBoss(); planEmergencies(); spawnEmergency(); checkEmergency(); checkAch(); render(); lockScreen(); function dayTick(){ try{ if(S.lastProcessed<today()){ rollover(); ensureBoss(); render(); } planEmergencies(); spawnEmergency(); checkEmergency(); renderEmergency(); }catch(e){} }
+window.onAppResume=()=>{ dayTick(); };
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') dayTick(); });
+setInterval(()=>{ dayTick(); },60000);
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){ navigator.serviceWorker.register('sw.js').catch(()=>{}); } if(window.Android&&Android.requestSteps){ setTimeout(()=>Android.requestSteps(),800); }
 </script>
 </body>
