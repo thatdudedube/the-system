@@ -151,6 +151,9 @@ jobs:
                   <receiver android:name=".QuickLogReceiver" android:exported="false">
                       <intent-filter><action android:name="uk.thesystem.QUICKLOG"/></intent-filter>
                   </receiver>
+                  <receiver android:name=".EmergencyReceiver" android:exported="true">
+                      <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter>
+                  </receiver>
                   <receiver android:name=".ReminderReceiver" android:exported="true">
                       <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter>
                   </receiver>
@@ -283,7 +286,7 @@ jobs:
               @Override
               protected void onResume() {
                   super.onResume();
-                  if (web != null) web.evaluateJavascript("window.pullQuickLogs&&window.pullQuickLogs();window.refreshSteps&&window.Android&&window.Android.requestSteps&&window.Android.requestSteps()", null);
+                  if (web != null) web.evaluateJavascript("window.onAppResume&&window.onAppResume();window.pullQuickLogs&&window.pullQuickLogs();window.refreshSteps&&window.Android&&window.Android.requestSteps&&window.Android.requestSteps()", null);
               }
 
               class Bridge {
@@ -308,6 +311,12 @@ jobs:
                       SharedPreferences p = getSharedPreferences("reminder", MODE_PRIVATE);
                       p.edit().putBoolean("on", on == 1).putInt("h", hour).putInt("m", minute).putString("title", title).putString("text", text).apply();
                       ReminderReceiver.schedule(MainActivity.this);
+                  }
+
+                  @JavascriptInterface
+                  public void setEmergencies(String json) {
+                      getSharedPreferences("emerg", MODE_PRIVATE).edit().putString("plan", json).apply();
+                      EmergencyReceiver.scheduleAll(MainActivity.this);
                   }
 
                   @JavascriptInterface
@@ -603,6 +612,69 @@ jobs:
                           .setContentIntent(open).setAutoCancel(true).build();
                   nm.notify(1, n);
                   schedule(c);
+              }
+          }
+          EOF
+      - name: Write emergency receiver
+        run: |
+          A=android/app/src/main
+          cat > $A/java/uk/thesystem/app/EmergencyReceiver.java <<'EOF'
+          package uk.thesystem.app;
+
+          import android.app.AlarmManager;
+          import android.app.Notification;
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.app.PendingIntent;
+          import android.content.BroadcastReceiver;
+          import android.content.Context;
+          import android.content.Intent;
+          import org.json.JSONArray;
+          import org.json.JSONObject;
+
+          public class EmergencyReceiver extends BroadcastReceiver {
+              static final String CH = "emergency";
+
+              static PendingIntent pi(Context c, int req, String title, String text) {
+                  Intent i = new Intent(c, EmergencyReceiver.class).setAction("uk.thesystem.EMERG." + req)
+                          .putExtra("title", title == null ? "" : title).putExtra("text", text == null ? "" : text).putExtra("req", req);
+                  return PendingIntent.getBroadcast(c, req, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+              }
+
+              public static void scheduleAll(Context c) {
+                  AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+                  for (int r = 200; r < 220; r++) am.cancel(pi(c, r, null, null));
+                  String plan = c.getSharedPreferences("emerg", Context.MODE_PRIVATE).getString("plan", "[]");
+                  long now = System.currentTimeMillis();
+                  try {
+                      JSONArray a = new JSONArray(plan);
+                      for (int k = 0; k < a.length() && k < 20; k++) {
+                          JSONObject o = a.getJSONObject(k);
+                          long at = o.getLong("at");
+                          if (at <= now) continue;
+                          am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi(c, 200 + k, o.optString("title"), o.optString("text")));
+                      }
+                  } catch (Exception e) { }
+              }
+
+              @Override
+              public void onReceive(Context c, Intent i) {
+                  if (Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) { scheduleAll(c); return; }
+                  NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+                  NotificationChannel ch = new NotificationChannel(CH, "Emergency quests", NotificationManager.IMPORTANCE_HIGH);
+                  ch.enableVibration(true);
+                  ch.setVibrationPattern(new long[]{0, 120, 80, 120, 80, 260});
+                  nm.createNotificationChannel(ch);
+                  PendingIntent open = PendingIntent.getActivity(c, 0, new Intent(c, MainActivity.class), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                  String text = i.getStringExtra("text");
+                  Notification n = new Notification.Builder(c, CH)
+                          .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                          .setContentTitle(i.getStringExtra("title"))
+                          .setContentText(text)
+                          .setStyle(new Notification.BigTextStyle().bigText(text))
+                          .setCategory(Notification.CATEGORY_ALARM)
+                          .setContentIntent(open).setAutoCancel(true).build();
+                  nm.notify(i.getIntExtra("req", 200), n);
               }
           }
           EOF
