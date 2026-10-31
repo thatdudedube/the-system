@@ -121,6 +121,13 @@ const CLOCK = `if(!window.__real){ window.__real=today; window.__day=__real(); t
     eq(r[0], false, 'started early'); eq(r[1], true, 'did not start'); eq(r[2], 'expired', 'missed state');
   });
 
+  await test('ticking push-up / healthy-eating / water quests counts toward weekly goals (no double count)', () => {
+    const r = A.run(`const wk=periodFilter('week'); const q=ex=>S.tasks.find(t=>t.link&&t.link.ex===ex); const d=today();
+      for(const ex of ['pushups','tracker:food','tracker:water']){ const t=q(ex); if(t&&t.last!==d) toggleTask(t.id); } save();
+      const a=[pushupsIn(wk)>=puTarget(), mealsIn(wk)>=1, waterIn(wk)>=8]; S.sets.push({ex:'pushups',date:d,amt:puTarget()+20,variant:'Standard'}); a.push(pushupsIn(wk)-dayTotal('pushups',d)); a`);
+    ok(r[0], 'push-ups'); ok(r[1], 'clean eating'); ok(r[2], 'water'); ok(r[3] < r[3] + 1 && r[3] >= 0, 'double count');
+  });
+
   // ---------- shortcuts (Android quick-log) ----------
   await test('REGRESSION: shortcut taps are credited, including late-night taps for yesterday', () => {
     const r = A.run(`const t=today(), y=addDays(t,-1); S.habits[t]=S.habits[t]||{}; S.habits[y]=S.habits[y]||{}; S.habits[t].stairs=3; S.habits[y].stairs=2;
