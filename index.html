@@ -777,7 +777,7 @@ function rollover(){
 }
 
 /* ========= ACTIONS ========= */
-function toggleTask(id){
+function toggleTask(id){ setTimeout(()=>{ try{ checkGoals(); renderGoals(); }catch(e){} },0);
   const t=S.tasks.find(x=>x.id===id); const d=today();
   if(t.last===d){ // untick
     S.log=S.log.filter(e=>!(e.task===id&&e.date===d)); t.last=t.prevLast||null; t.streak=t.prevStreak||0; recomputeRecap(d);
@@ -911,22 +911,26 @@ function inWeek(d,wk=weekKey()){ return d>=wk&&d<=addDays(wk,6); }
 function inMonth(d,mk=monthKey()){ return d.slice(0,7)===mk; }
 const sessionsIn=(exid,f)=>new Set(S.sets.filter(x=>x.ex===exid&&f(x.date)).map(x=>x.date)).size;
 const amountIn=(exid,f)=>S.sets.filter(x=>x.ex===exid&&f(x.date)).reduce((a,x)=>a+x.amt,0);
-const mealsIn=f=>Object.keys(S.food||{}).filter(d=>f(d)&&foodHealthy(d)).length;
+const periodDays=f=>{ const out=[]; for(let i=0;i<40;i++){ const d=addDays(today(),-i); if(f(d)) out.push(d); } return out; };
+const questDoneOn=(ex,d)=>{ const ids=doneOn(d); return S.tasks.some(t=>t.link&&t.link.ex===ex&&ids.has(t.id)); };
+const mealsIn=f=>periodDays(f).filter(d=>foodHealthy(d)||questDoneOn('tracker:food',d)).length;
+const pushupsIn=f=>periodDays(f).reduce((a,d)=>a+Math.max(dayTotal('pushups',d),questDoneOn('pushups',d)?puTarget():0),0);
+const waterIn=f=>periodDays(f).reduce((a,d)=>a+Math.max(habitCount('water',d),questDoneOn('tracker:water',d)?8:0),0);
 const habitDaysIn=(id,f)=>Object.entries(S.habits).filter(([d,h])=>f(d)&&(h[id]||0)>=TRACKERS.find(t=>t.id===id).target).length;
 const habitSumIn=(id,f)=>Object.entries(S.habits).filter(([d,h])=>f(d)).reduce((a,[d,h])=>a+(h[id]||0),0);
 const flawlessIn=f=>Object.keys(S.recap).filter(d=>f(d)&&d<today()&&S.tasks.length&&S.tasks.every(t=>S.log.some(e=>e.task===t.id&&e.date===d))).length;
 const puTarget=()=>{const t=S.tasks.find(t=>t.link&&t.link.ex==='pushups'); return t?targetOf(t):30;};
 const AUTO_GOALS=[
   {id:'w_bad',period:'week',name:'Badminton 2 sessions',target:2,xp:300,primary:'Fitness',prog:f=>sessionsIn('badminton',f)},
-  {id:'w_pu',period:'week',name:()=>'Push-ups · 5× daily target',target:()=>puTarget()*5,xp:300,primary:'Strength',prog:f=>amountIn('pushups',f)},
+  {id:'w_pu',period:'week',name:()=>'Push-ups · 5× daily target',target:()=>puTarget()*5,xp:300,primary:'Strength',prog:f=>pushupsIn(f)},
   {id:'w_eat',period:'week',name:'Clean eating · 6 days under target',target:6,xp:500,primary:'Nutrition',prog:f=>mealsIn(f)},
   {id:'w_teeth',period:'week',name:'Brush & floss twice a day, 7 days',target:7,xp:300,primary:'Longevity',prog:f=>habitDaysIn('teeth',f)},
-  {id:'w_water',period:'week',name:'Water · 56 cups',target:56,xp:300,primary:'Nutrition',prog:f=>habitSumIn('water',f)},
+  {id:'w_water',period:'week',name:'Water · 56 cups',target:56,xp:300,primary:'Nutrition',prog:f=>waterIn(f)},
   {id:'w_stairs',period:'week',name:'Stairs · 100 flights',target:100,xp:250,primary:'Fitness',prog:f=>habitSumIn('stairs',f)},
   {id:'w_steps',period:'week',name:'70,000 steps',target:70000,xp:350,primary:'Fitness',prog:f=>habitSumIn('steps',f)},
   {id:'w_flaw',period:'week',name:'5 flawless days',target:5,xp:600,primary:'Self-Discipline',prog:f=>flawlessIn(f)},
   {id:'m_bad',period:'month',name:'Badminton 8 sessions',target:8,xp:1100,primary:'Fitness',prog:f=>sessionsIn('badminton',f)},
-  {id:'m_pu',period:'month',name:()=>'Push-ups · 20× daily target',target:()=>puTarget()*20,xp:1200,primary:'Strength',prog:f=>amountIn('pushups',f)},
+  {id:'m_pu',period:'month',name:()=>'Push-ups · 20× daily target',target:()=>puTarget()*20,xp:1200,primary:'Strength',prog:f=>pushupsIn(f)},
   {id:'m_eat',period:'month',name:'Clean eating · 24 days under target',target:24,xp:1800,primary:'Nutrition',prog:f=>mealsIn(f)},
   {id:'m_teeth',period:'month',name:'Brush & floss twice a day, 28 days',target:28,xp:1000,primary:'Longevity',prog:f=>habitDaysIn('teeth',f)},
   {id:'m_steps',period:'month',name:'300,000 steps',target:300000,xp:1400,primary:'Fitness',prog:f=>habitSumIn('steps',f)},
