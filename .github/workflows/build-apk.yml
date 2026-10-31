@@ -6,7 +6,38 @@ on:
 permissions:
   contents: write
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install test tools
+        run: npm install --no-save --no-audit --no-fund jsdom@24.1.3
+      - name: Run app tests (a failure stops the APK being built)
+        run: node tests/run.js index.html
+  screens:
+    needs: test
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.47.2
+          npx playwright install --with-deps chromium
+      - name: Screenshot every tab
+        run: node tests/screens.js index.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screens/
   build:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,17 +49,34 @@ jobs:
         run: |
           set -e
           A=android/app/src/main
-          mkdir -p $A/java/uk/thesystem/app $A/assets $A/res/mipmap-xxxhdpi
+          mkdir -p $A/java/uk/thesystem/app $A/assets
           cp index.html $A/assets/index.html
           sed -i '/serviceWorker/d' $A/assets/index.html
           sed -i "s/const APP_BUILD=0;/const APP_BUILD=$GITHUB_RUN_NUMBER;/" $A/assets/index.html
           grep -q "const APP_BUILD=$GITHUB_RUN_NUMBER;" $A/assets/index.html
-          python3 - <<'PY'
-          import re,base64
-          s=open('index.html').read()
-          m=re.search(r"const DEFAULT_AVATAR='data:image/jpeg;base64,([^']+)'",s)
-          open('android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.jpg','wb').write(base64.b64decode(m.group(1)))
-          PY
+          mkdir -p $A/res/mipmap-anydpi-v26 $A/res/drawable $A/res/values
+          cat > $A/res/drawable/ic_gear_fg.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+            <group android:translateX="30" android:translateY="30" android:scaleX="2" android:scaleY="2">
+              <path android:fillColor="#E4E7EC" android:pathData="M19.14,12.94c0.04,-0.3 0.06,-0.61 0.06,-0.94c0,-0.32 -0.02,-0.64 -0.07,-0.94l2.03,-1.58c0.18,-0.14 0.23,-0.41 0.12,-0.61l-1.92,-3.32c-0.12,-0.22 -0.37,-0.29 -0.59,-0.22l-2.39,0.96c-0.5,-0.38 -1.03,-0.7 -1.62,-0.94L14.4,2.81c-0.04,-0.24 -0.24,-0.41 -0.48,-0.41h-3.84c-0.24,0 -0.43,0.17 -0.47,0.41L9.25,5.35C8.66,5.59 8.12,5.92 7.63,6.29L5.24,5.33c-0.22,-0.08 -0.47,0 -0.59,0.22L2.74,8.87C2.62,9.08 2.66,9.34 2.86,9.48l2.03,1.58C4.84,11.36 4.8,11.69 4.8,12s0.02,0.64 0.07,0.94l-2.03,1.58c-0.18,0.14 -0.23,0.41 -0.12,0.61l1.92,3.32c0.12,0.22 0.37,0.29 0.59,0.22l2.39,-0.96c0.5,0.38 1.03,0.7 1.62,0.94l0.36,2.54c0.05,0.24 0.24,0.41 0.48,0.41h3.84c0.24,0 0.44,-0.17 0.47,-0.41l0.36,-2.54c0.59,-0.24 1.13,-0.56 1.62,-0.94l2.39,0.96c0.22,0.08 0.47,0 0.59,-0.22l1.92,-3.32c0.12,-0.22 0.07,-0.47 -0.12,-0.61L19.14,12.94zM12,15.6c-1.98,0 -3.6,-1.62 -3.6,-3.6s1.62,-3.6 3.6,-3.6s3.6,1.62 3.6,3.6S13.98,15.6 12,15.6z"/>
+            </group>
+          </vector>
+          EOF
+          cat > $A/res/drawable/ic_stat_system.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+            <path android:fillColor="#FFFFFFFF" android:pathData="M19.14,12.94c0.04,-0.3 0.06,-0.61 0.06,-0.94c0,-0.32 -0.02,-0.64 -0.07,-0.94l2.03,-1.58c0.18,-0.14 0.23,-0.41 0.12,-0.61l-1.92,-3.32c-0.12,-0.22 -0.37,-0.29 -0.59,-0.22l-2.39,0.96c-0.5,-0.38 -1.03,-0.7 -1.62,-0.94L14.4,2.81c-0.04,-0.24 -0.24,-0.41 -0.48,-0.41h-3.84c-0.24,0 -0.43,0.17 -0.47,0.41L9.25,5.35C8.66,5.59 8.12,5.92 7.63,6.29L5.24,5.33c-0.22,-0.08 -0.47,0 -0.59,0.22L2.74,8.87C2.62,9.08 2.66,9.34 2.86,9.48l2.03,1.58C4.84,11.36 4.8,11.69 4.8,12s0.02,0.64 0.07,0.94l-2.03,1.58c-0.18,0.14 -0.23,0.41 -0.12,0.61l1.92,3.32c0.12,0.22 0.37,0.29 0.59,0.22l2.39,-0.96c0.5,0.38 1.03,0.7 1.62,0.94l0.36,2.54c0.05,0.24 0.24,0.41 0.48,0.41h3.84c0.24,0 0.44,-0.17 0.47,-0.41l0.36,-2.54c0.59,-0.24 1.13,-0.56 1.62,-0.94l2.39,0.96c0.22,0.08 0.47,0 0.59,-0.22l1.92,-3.32c0.12,-0.22 0.07,-0.47 -0.12,-0.61L19.14,12.94zM12,15.6c-1.98,0 -3.6,-1.62 -3.6,-3.6s1.62,-3.6 3.6,-3.6s3.6,1.62 3.6,3.6S13.98,15.6 12,15.6z"/>
+          </vector>
+          EOF
+          cat > $A/res/values/colors.xml <<'EOF'
+          <resources><color name="ic_bg">#5B6270</color></resources>
+          EOF
+          cat > $A/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+            <background android:drawable="@color/ic_bg"/>
+            <foreground android:drawable="@drawable/ic_gear_fg"/>
+            <monochrome android:drawable="@drawable/ic_gear_fg"/>
+          </adaptive-icon>
+          EOF
           cat > android/settings.gradle <<'EOF'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
           dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
@@ -61,10 +109,10 @@ jobs:
               kotlinOptions { jvmTarget = '17' }
               signingConfigs {
                   fixed {
-                      storeFile file('../../the-system.keystore')
-                      storePassword 'android'
-                      keyAlias 'androiddebugkey'
-                      keyPassword 'android'
+                      storeFile file(System.getenv('KS_PATH'))
+                      storePassword System.getenv('KS_PASS')
+                      keyAlias System.getenv('KS_ALIAS')
+                      keyPassword System.getenv('KS_KEYPASS')
                   }
               }
               buildTypes { debug { signingConfig signingConfigs.fixed } }
@@ -125,7 +173,7 @@ jobs:
               <queries>
                   <package android:name="com.google.android.apps.healthdata"/>
               </queries>
-              <application android:label="The System" android:icon="@mipmap/ic_launcher" android:allowBackup="true" android:supportsRtl="true" android:theme="@android:style/Theme.Material.NoActionBar">
+              <application android:label="System" android:icon="@mipmap/ic_launcher" android:allowBackup="true" android:supportsRtl="true" android:theme="@android:style/Theme.Material.NoActionBar">
                   <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden|uiMode" android:windowSoftInputMode="adjustResize">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
@@ -286,7 +334,7 @@ jobs:
               @Override
               protected void onResume() {
                   super.onResume();
-                  if (web != null) web.evaluateJavascript("window.onAppResume&&window.onAppResume();window.pullQuickLogs&&window.pullQuickLogs();window.refreshSteps&&window.Android&&window.Android.requestSteps&&window.Android.requestSteps()", null);
+                  if (web != null) web.evaluateJavascript("window.pullQuickLogs&&window.pullQuickLogs();window.onAppResume&&window.onAppResume();window.refreshSteps&&window.Android&&window.Android.requestSteps&&window.Android.requestSteps()", null);
               }
 
               class Bridge {
@@ -295,15 +343,17 @@ jobs:
                   @JavascriptInterface
                   public void setQuickLog(int on, int water, int teeth, int stairs, String date) {
                       SharedPreferences p = getSharedPreferences("quicklog", MODE_PRIVATE);
-                      p.edit().putBoolean("on", on == 1).putString("date", date).putInt("base_water", water).putInt("base_teeth", teeth).putInt("base_stairs", stairs)
-                          .putInt("add_water", 0).putInt("add_teeth", 0).putInt("add_stairs", 0).apply();
+                      QuickLogReceiver.rollDate(p, date);
+                      p.edit().putBoolean("on", on == 1).putInt("base_water", water).putInt("base_teeth", teeth).putInt("base_stairs", stairs).commit();
                       QuickLogReceiver.show(MainActivity.this);
                   }
                   @JavascriptInterface
-                  public String pullQuickLogs() {
+                  public synchronized String pullQuickLogs() {
                       SharedPreferences p = getSharedPreferences("quicklog", MODE_PRIVATE);
-                      String out = "{\"date\":\"" + p.getString("date", "") + "\",\"water\":" + p.getInt("add_water", 0) + ",\"teeth\":" + p.getInt("add_teeth", 0) + ",\"stairs\":" + p.getInt("add_stairs", 0) + "}";
-                      p.edit().putInt("add_water", 0).putInt("add_teeth", 0).putInt("add_stairs", 0).apply();
+                      String out = "{\"date\":\"" + p.getString("date", "") + "\",\"water\":" + p.getInt("add_water", 0) + ",\"teeth\":" + p.getInt("add_teeth", 0) + ",\"stairs\":" + p.getInt("add_stairs", 0)
+                          + ",\"prev_date\":\"" + p.getString("prev_date", "") + "\",\"prev\":{\"water\":" + p.getInt("prev_water", 0) + ",\"teeth\":" + p.getInt("prev_teeth", 0) + ",\"stairs\":" + p.getInt("prev_stairs", 0) + "}}";
+                      p.edit().putInt("add_water", 0).putInt("add_teeth", 0).putInt("add_stairs", 0)
+                          .putString("prev_date", "").putInt("prev_water", 0).putInt("prev_teeth", 0).putInt("prev_stairs", 0).commit();
                       return out;
                   }
                   @JavascriptInterface
@@ -404,58 +454,6 @@ jobs:
                           onResult(r[StepsRecord.COUNT_TOTAL] ?: 0L)
                       } catch (e: Exception) { onResult(-3) }
                   }
-              }
-          }
-          EOF
-          cat > $A/java/uk/thesystem/app/QuickLogReceiver.java <<'EOF'
-          package uk.thesystem.app;
-
-          import android.app.Notification;
-          import android.app.NotificationChannel;
-          import android.app.NotificationManager;
-          import android.app.PendingIntent;
-          import android.content.BroadcastReceiver;
-          import android.content.Context;
-          import android.content.Intent;
-          import android.content.SharedPreferences;
-
-          public class QuickLogReceiver extends BroadcastReceiver {
-              static final String CH = "quicklog";
-              static final int ID = 2;
-
-              static PendingIntent act(Context c, String key, int req) {
-                  Intent i = new Intent(c, QuickLogReceiver.class).setAction("uk.thesystem.QUICKLOG").putExtra("key", key);
-                  return PendingIntent.getBroadcast(c, req, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-              }
-
-              public static void show(Context c) {
-              NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
-              nm.cancel(ID);
-              }
-
-              public static int bump(Context c, String key) {
-                  SharedPreferences p = c.getSharedPreferences("quicklog", Context.MODE_PRIVATE);
-                  String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.UK).format(new java.util.Date());
-                  if (!today.equals(p.getString("date", ""))) {
-                      p.edit().putString("date", today).putInt("base_water", 0).putInt("base_teeth", 0).putInt("base_stairs", 0)
-                              .putInt("add_water", 0).putInt("add_teeth", 0).putInt("add_stairs", 0).apply();
-                  }
-                  p.edit().putInt("add_" + key, p.getInt("add_" + key, 0) + 1).apply();
-                  return total(c, key);
-              }
-
-              public static int total(Context c, String key) {
-                  SharedPreferences p = c.getSharedPreferences("quicklog", Context.MODE_PRIVATE);
-                  return p.getInt("base_" + key, 0) + p.getInt("add_" + key, 0);
-              }
-
-              @Override
-              public void onReceive(Context c, Intent i) {
-                  if (Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) { show(c); return; }
-                  String key = i.getStringExtra("key");
-                  if (key == null) return;
-                  bump(c, key);
-                  show(c);
               }
           }
           EOF
@@ -605,13 +603,81 @@ jobs:
                   nm.createNotificationChannel(new NotificationChannel(CH, "Daily reminder", NotificationManager.IMPORTANCE_DEFAULT));
                   PendingIntent open = PendingIntent.getActivity(c, 0, new Intent(c, MainActivity.class), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
                   Notification n = new Notification.Builder(c, CH)
-                          .setSmallIcon(android.R.drawable.ic_dialog_info)
+                          .setSmallIcon(R.drawable.ic_stat_system)
                           .setContentTitle(p.getString("title", "The System"))
                           .setContentText(p.getString("text", "Daily quests close at midnight."))
                           .setStyle(new Notification.BigTextStyle().bigText(p.getString("text", "Daily quests close at midnight.")))
                           .setContentIntent(open).setAutoCancel(true).build();
                   nm.notify(1, n);
                   schedule(c);
+              }
+          }
+          EOF
+      - name: Write quick-log sources
+        run: |
+          A=android/app/src/main
+          cat > $A/java/uk/thesystem/app/QuickLogReceiver.java <<'EOF'
+          package uk.thesystem.app;
+
+          import android.app.Notification;
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.app.PendingIntent;
+          import android.content.BroadcastReceiver;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.content.SharedPreferences;
+
+          public class QuickLogReceiver extends BroadcastReceiver {
+              static final String CH = "quicklog";
+              static final int ID = 2;
+
+              static PendingIntent act(Context c, String key, int req) {
+                  Intent i = new Intent(c, QuickLogReceiver.class).setAction("uk.thesystem.QUICKLOG").putExtra("key", key);
+                  return PendingIntent.getBroadcast(c, req, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+              }
+
+              public static void show(Context c) {
+              NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+              nm.cancel(ID);
+              }
+
+              static synchronized void rollDate(SharedPreferences p, String today) {
+                  String d = p.getString("date", "");
+                  if (today.equals(d)) return;
+                  SharedPreferences.Editor e = p.edit();
+                  int w = p.getInt("add_water", 0), t = p.getInt("add_teeth", 0), s = p.getInt("add_stairs", 0);
+                  if (w + t + s > 0 && d.length() > 0) {
+                      boolean same = d.equals(p.getString("prev_date", ""));
+                      e.putString("prev_date", d)
+                       .putInt("prev_water", (same ? p.getInt("prev_water", 0) : 0) + w)
+                       .putInt("prev_teeth", (same ? p.getInt("prev_teeth", 0) : 0) + t)
+                       .putInt("prev_stairs", (same ? p.getInt("prev_stairs", 0) : 0) + s);
+                  }
+                  e.putString("date", today).putInt("base_water", 0).putInt("base_teeth", 0).putInt("base_stairs", 0)
+                   .putInt("add_water", 0).putInt("add_teeth", 0).putInt("add_stairs", 0).commit();
+              }
+
+              public static synchronized int bump(Context c, String key) {
+                  SharedPreferences p = c.getSharedPreferences("quicklog", Context.MODE_PRIVATE);
+                  String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.UK).format(new java.util.Date());
+                  rollDate(p, today);
+                  p.edit().putInt("add_" + key, p.getInt("add_" + key, 0) + 1).commit();
+                  return total(c, key);
+              }
+
+              public static int total(Context c, String key) {
+                  SharedPreferences p = c.getSharedPreferences("quicklog", Context.MODE_PRIVATE);
+                  return p.getInt("base_" + key, 0) + p.getInt("add_" + key, 0);
+              }
+
+              @Override
+              public void onReceive(Context c, Intent i) {
+                  if (Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) { show(c); return; }
+                  String key = i.getStringExtra("key");
+                  if (key == null) return;
+                  bump(c, key);
+                  show(c);
               }
           }
           EOF
@@ -668,7 +734,7 @@ jobs:
                   PendingIntent open = PendingIntent.getActivity(c, 0, new Intent(c, MainActivity.class), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
                   String text = i.getStringExtra("text");
                   Notification n = new Notification.Builder(c, CH)
-                          .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                          .setSmallIcon(R.drawable.ic_stat_system)
                           .setContentTitle(i.getStringExtra("title"))
                           .setContentText(text)
                           .setStyle(new Notification.BigTextStyle().bigText(text))
@@ -678,10 +744,23 @@ jobs:
               }
           }
           EOF
-      - name: Check the signing key is present
+      - name: Restore signing key from secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
         run: |
-          test -f the-system.keystore || (echo "the-system.keystore missing from repo root" && exit 1)
-          keytool -list -keystore the-system.keystore -storepass android | grep -i "sha-256" || true
+          KS="$RUNNER_TEMP/release.keystore"
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$KS"
+            echo "Signing key loaded from the KEYSTORE_B64 secret."
+          elif [ -f the-system.keystore ]; then
+            cp the-system.keystore "$KS"
+            echo "::warning::Using the keystore committed to the repo. Add the KEYSTORE_B64 secret, then delete the-system.keystore from the repo."
+          else
+            echo "::error::No signing key. Add the KEYSTORE_B64 secret (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          { echo "KS_PATH=$KS"; echo "KS_PASS=android"; echo "KS_ALIAS=androiddebugkey"; echo "KS_KEYPASS=android"; } >> "$GITHUB_ENV"
+          keytool -list -keystore "$KS" -storepass android | grep -i "sha-256"
       - name: Build debug APK
         working-directory: android
         run: |
