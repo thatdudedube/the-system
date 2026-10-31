@@ -4,7 +4,8 @@
 - `index.html` — the entire app: CSS, HTML, JS, lesson content, 21 portraits (base64). ~1 MB. This is the only file that changes for app updates.
 - `system-levelling.html` — same app without the PWA manifest/service-worker lines (the Claude artifact copy). Keep in sync; `index.html` is derived from it.
 - `manifest.webmanifest`, `sw.js`, `icon-*.png` — PWA files for GitHub Pages. Rarely change.
-- `the-system.keystore` — the permanent signing key (password `android`, alias `androiddebugkey`). Never regenerate; a new key breaks updates for the installed app.
+- Signing key — stored as the `KEYSTORE_B64` Actions secret (password `android`, alias `androiddebugkey`). Never regenerate; a new key breaks updates for the installed app.
+- `tests/` — `run.js` (blocking checks) and `screens.js` (screenshots).
 - `.github/workflows/build-apk.yml` — builds the Android wrapper on every push to `main`. It *generates* the whole Android project from templates inside the YAML (Gradle files, manifest, Java/Kotlin sources, resources) and copies `index.html` into assets. There is no `android/` folder in the repo.
 - `CONTEXT.md`, `DECISIONS.md`, `TICKETS.md` — this documentation.
 
@@ -16,7 +17,8 @@
 - `S.todos` (to-do list), `S.notes` (three-pass notes), `S.practice`, `S.srs` (spaced repetition) — learning/to-do state.
 - Day judgement: never read `t.last` to decide if a past day was done — use `doneOn(d)`. Daily work runs through `dayTick()` (resume, visibility, 60 s timer).
 - Emergencies: `S.emPlan[date]={at,id,hours}`; `syncEmergencyAlarms()` pushes upcoming alerts to the APK. Call it after anything that clears or changes a plan.
-- Workflow: 'Write Android sources' is ~19.1k of the 21k limit — new Java goes in its own step (see 'Write emergency receiver').
+- Workflow: 'Write Android sources' is ~17.2k of the 21k limit — new Java goes in its own step (see 'Write quick-log sources', 'Write emergency receiver').
+- Quick-log taps: Android keeps add_* (today) and prev_* (an earlier day) until `pullQuickLogs()` collects them; `setQuickLog` only updates base counts. Always call `pullQuickLogs()` before anything that saves on start/resume.
 - `APP_BUILD` is 0 in the repo and replaced by sed in the workflow; never hard-code a number. `weakMult()` is HP-tiered — use it for every XP grant.
 - `S.goalOv[id]` overrides auto goals (use gTarget/gXp/gPrim/gName/gHidden, never g.target directly). `S.customSubs` are pushed into SKILLS/SUB_SKILL/ALL_SUBS by `applyCustomSubs()` right after `load()`.
 - Every `section.view > .win` is collapsible: `initWins()` gives it an id, the heading click toggles `S.ui.open[id]`; `CLOSED_BY_DEFAULT` lists exceptions.
@@ -38,6 +40,10 @@
 - Add network calls the published page's CSP would block, without an APK-only guard.
 
 ## How to test
+- `npm install --no-save jsdom@24.1.3 && node tests/run.js index.html` — must print all passing; CI runs the same before building. Add a test for every bug fixed.
+- Screenshots: `npm install --no-save playwright@1.47.2 && npx playwright install chromium && node tests/screens.js index.html` → `screens/`. CI attaches them to each run as the *screenshots* artefact.
+- Signing: the key lives in the `KEYSTORE_B64` secret; never commit a keystore.
+
 - Headless: `node` + `jsdom`, load the file with `runScripts:'dangerously'`, call functions directly (`toggleTask`, `logSet`, `rollover`, `submitQuiz`…), always `process.exit(0)` because the page has `setInterval`s.
 - Then publish the artifact and upload `index.html`; check the Actions run is green and install the release.
 

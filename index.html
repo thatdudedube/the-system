@@ -828,15 +828,15 @@ function linkTotal(t,d=today()){ if(!t.link) return 0; if(t.link.ex==='tracker:f
 function completeLinked(key){ const d=today(); for(const t of S.tasks){ if(t.link&&t.link.ex===key&&t.last!==d&&linkTotal(t)>=targetOf(t)){ t.prevLast=t.last; t.prevStreak=t.streak; t.streak=(t.last===prevActiveDay(d))?t.streak+1:1; t.best=Math.max(t.best,t.streak); t.last=d; sys('Quest complete','"'+t.name+'" reached from your log.'); if([10,30,66,100,365].includes(t.streak)){S.tokens++;S.tokensEarned++;} } } }
 function habitCount(id,d=today()){ return (S.habits[d]||{})[id]||0; }
 function habitAdd(id,delta){ habitSet(id,habitCount(id)+delta,delta>0); }
-function habitSet(id,value,announce=true){
-  const d=today(); const t=TRACKERS.find(x=>x.id===id); S.habits[d]=S.habits[d]||{}; const before=habitCount(id); const after=Math.max(0,Math.min(t.max,Math.round(value))); if(after===before) return;
+function habitSet(id,value,announce=true,d=today()){
+  const t=TRACKERS.find(x=>x.id===id); S.habits[d]=S.habits[d]||{}; const before=habitCount(id,d); const after=Math.max(0,Math.min(t.max,Math.round(value))); if(after===before) return;
   S.habits[d][id]=after;
   // rebuild today's XP for this tracker from scratch so undo works
   S.log=S.log.filter(e=>!(e.task==='h:'+id&&e.date===d));
   const xp=Math.round((after*t.perUnit+(after>=t.target?t.bonus:0))*weakMult());
   if(xp>0){ S.log.push({task:'h:'+id,date:d,sub:t.primary,xp}); t.secondary.forEach(sub=>S.log.push({task:'h:'+id,date:d,sub,xp:Math.round(xp*.25)})); }
   recomputeRecap(d); if(after>=t.target&&before<t.target&&announce) sys(t.name,'Daily target reached · +'+t.bonus+' XP bonus.');
-  completeLinked('tracker:'+id); save(); checkAch(); render();
+  if(d===today()) completeLinked('tracker:'+id); save(); checkAch(); render();
 }
 function refreshSteps(){ if(window.Android&&Android.requestSteps){ S.stepsStatus='syncing…'; Android.requestSteps(); } else { const v=prompt('Steps today'); if(v) habitSet('steps',Number(v)); } }
 window.onSteps=function(n){ n=Number(n); if(n>=0){ S.stepsStatus='synced '+new Date().toTimeString().slice(0,5); habitSet('steps',n); } else { S.stepsStatus=n===-1?'Health Connect not available on this phone':n===-2?'permission not granted — tap Sync to ask again':'could not read steps — check Samsung Health → Health Connect sync'; render(); } };
@@ -1143,9 +1143,12 @@ function renderStrip(){ const d=today(); const done=S.tasks.filter(t=>t.last===d
 function renderBanner(){ const last=(S.backups||[]).slice(-1)[0]; const days=last?Math.floor((new Date(today()+'T12:00:00')-new Date(last+'T12:00:00'))/864e5):null; const show=(days===null&&dayIndex()>7)||(days!==null&&days>=30);
   document.getElementById('banner').innerHTML=show?`<div class="banner"><span>${days===null?'No backup yet.':'Last backup '+days+' days ago.'} Export one so a lost phone doesn't mean a lost hunter.</span><button class="btn sm" onclick="exportData()">Export</button></div>`:''; }
 function syncQuickLog(){ try{ if(window.Android&&Android.setQuickLog){ Android.setQuickLog(S.quickLog?1:0,habitCount('water'),habitCount('teeth'),habitCount('stairs'),today()); } }catch(e){} }
-function pullQuickLogs(){ try{ if(window.Android&&Android.pullQuickLogs){ const j=JSON.parse(Android.pullQuickLogs()||'{}'); if(j&&j.date===today()){ let any=false; for(const k of ['water','teeth','stairs']){ if(j[k]>0){ habitSet(k,habitCount(k)+j[k],false); any=true; } } if(any) sys('Quick log',"Added from the notification: "+['water','teeth','stairs'].filter(k=>j[k]>0).map(k=>j[k]+' '+k).join(', ')); } } }catch(e){} }
+function pullQuickLogs(){ try{ if(!(window.Android&&Android.pullQuickLogs)) return; const j=JSON.parse(Android.pullQuickLogs()||'{}'); const t=today(), oldest=addDays(t,-7); const got=[];
+  const apply=(d,o)=>{ if(!d||!o||d>t||d<oldest) return; for(const k of ['water','teeth','stairs']){ const n=+o[k]||0; if(n>0){ habitSet(k,habitCount(k,d)+n,false,d); got.push(n+' '+k+(d===t?'':' ('+d.slice(5)+')')); } } };
+  apply(j.prev_date,j.prev); apply(j.date,j);
+  if(got.length) sys('Shortcuts synced','Added from your shortcuts: '+got.join(', ')); }catch(e){} }
 window.pullQuickLogs=pullQuickLogs;
-function syncReminder(){ try{ if(window.Android&&Android.setReminder){ const d=today(); const left=S.tasks.length-S.tasks.filter(t=>t.last===d).length; const [h,m]=(S.reminder.time||'21:00').split(':').map(Number); Android.setReminder(S.reminder.on?1:0,h,m,'The System','Daily quests close at midnight. '+left+' still open when you last checked.'); } }catch(e){} }
+function syncReminder(){ try{ if(window.Android&&Android.setReminder){ const d=today(); const left=S.tasks.length-S.tasks.filter(t=>t.last===d).length; const [h,m]=(S.reminder.time||'21:00').split(':').map(Number); Android.setReminder(S.reminder.on?1:0,h,m,'System','🔔 Daily check-in'); } }catch(e){} }
 function markBookRead(t){ S.booksRead[t]=today(); sys('Book finished',t+' · +120 XP → Knowledge'); S.log.push({task:'book',date:today(),sub:'Knowledge',xp:Math.round(120*weakMult())}); recomputeRecap(today()); save(); checkAch(); render(); }
 function healInfo(){ document.getElementById('modalBody').innerHTML=`<h2>How to restore HP</h2><div class="kvlist" style="font-size:14px;line-height:1.5">
 <div class="sub"><b>Day at threshold (${Math.min(S.threshold||6,S.tasks.length)}+ quests)</b><span>+20</span></div><div class="sub"><b>Pass streak, per consecutive day</b><span>+10 × days (max 50)</span></div><div class="sub"><b>Every 7th pass day in a row</b><span>+100</span></div><div class="sub"><b>Every 30th pass day in a row</b><span>+1 shield</span></div><div class="sub"><b>Day at 80%+ of quests</b><span>+50</span></div><div class="sub"><b>Flawless day (100%)</b><span>+100</span></div>
@@ -1222,8 +1225,9 @@ function planEmergencies(){ S.emPlan=S.emPlan||{}; const now=Date.now(); const t
   syncEmergencyAlarms(); }
 function syncEmergencyAlarms(){ try{ if(!(window.Android&&Android.setEmergencies)) return; const now=Date.now(); const out=[];
   for(const [d,p] of Object.entries(S.emPlan||{})){ if(!p) continue; const e=EMERGENCIES[p.id]; if(!e) continue; const exp=p.at+p.hours*3600e3; const cleared=S.emergency&&S.emergency.date===d&&S.emergency.done;
-    if(p.at>now) out.push({at:p.at,title:'⚠ [SYSTEM] Emergency quest',text:e.n+' — '+e.d+' '+p.hours+' h to clear. Reward '+e.xp+' XP + reward box.'});
-    if(!cleared&&exp-45*60e3>now) out.push({at:exp-45*60e3,title:'[SYSTEM] Emergency quest · 45 min left',text:e.n+' expires soon. '+e.d}); }
+    if(p.at>now) out.push({at:p.at,title:'System',text:'EMERGENCY 🚨'});
+    if(!cleared&&exp-45*60e3>now) out.push({at:exp-45*60e3,title:'System',text:'⏳ 45 min remaining'}); }
+  const quiet=a=>{ const h=new Date(a.at).getHours(); return h<8||h>=22; }; for(let i=out.length-1;i>=0;i--) if(quiet(out[i])) out.splice(i,1);
   const js=JSON.stringify(out.sort((a,b)=>a.at-b.at).slice(0,20)); if(js!==window._emSent){ window._emSent=js; Android.setEmergencies(js); } }catch(e){} }
 function spawnEmergency(){ const d=today(); if(S.emergency&&S.emergency.date!==d) S.emergency=null; const p=(S.emPlan||{})[d]; if(!p||S.emergency) return; const now=Date.now(); if(now<p.at) return;
   const e=EMERGENCIES[p.id]; const exp=p.at+p.hours*3600e3; S.emergency={id:p.id,date:d,start:p.at,expires:exp,done:false,base:e.n==='Push-up surge'?dayTotal('pushups'):e.n==='Stair gate'?habitCount('stairs'):0};
@@ -1599,7 +1603,7 @@ function resetAll(){ confirmBox('Erase all progress? This cannot be undone.').th
 
 /* ========= NAV / INIT ========= */
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{ document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); document.querySelectorAll('.view').forEach(v=>v.classList.remove('on')); document.getElementById('v-'+b.dataset.v).classList.add('on'); window.scrollTo(0,0); });
-initWins(); load(); applyCustomSubs(); if(S._refundMsg){ const m=S._refundMsg; delete S._refundMsg; setTimeout(()=>sys('System correction',m),1200); } rollover(); pullQuickLogs(); setTimeout(()=>checkUpdate(false),1500); setTimeout(()=>{ if(!document.getElementById('lock')) showBriefing(); },400); renderDungeon(); ensureBoss(); planEmergencies(); spawnEmergency(); checkEmergency(); checkAch(); render(); lockScreen(); function dayTick(){ try{ if(S.lastProcessed<today()){ rollover(); ensureBoss(); render(); } planEmergencies(); spawnEmergency(); checkEmergency(); renderEmergency(); }catch(e){} }
+initWins(); load(); applyCustomSubs(); if(S._refundMsg){ const m=S._refundMsg; delete S._refundMsg; setTimeout(()=>sys('System correction',m),1200); } pullQuickLogs(); rollover(); setTimeout(()=>checkUpdate(false),1500); setTimeout(()=>{ if(!document.getElementById('lock')) showBriefing(); },400); renderDungeon(); ensureBoss(); planEmergencies(); spawnEmergency(); checkEmergency(); checkAch(); render(); lockScreen(); function dayTick(){ try{ if(S.lastProcessed<today()){ rollover(); ensureBoss(); render(); } planEmergencies(); spawnEmergency(); checkEmergency(); renderEmergency(); }catch(e){} }
 window.onAppResume=()=>{ dayTick(); };
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') dayTick(); });
 setInterval(()=>{ dayTick(); },60000);
