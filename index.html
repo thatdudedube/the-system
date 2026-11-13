@@ -280,6 +280,8 @@ body.locked .app,body.locked .nav{filter:blur(16px);pointer-events:none;user-sel
 @keyframes gdPop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes gdBurst{0%{transform:translate(-50%,-50%) scale(.3);opacity:1}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) rotate(var(--r));opacity:0}}
 @keyframes gdFade{to{opacity:0}}
+.gd-tap{cursor:pointer;flex:1}.gd-tap:active{opacity:.7}
+.gd-exbtn{border:1px dashed var(--line2);padding:2px 0}.gd-exbtn span{color:var(--sys)!important}
 </style>
 </head>
 <body>
@@ -1464,7 +1466,7 @@ function gd(){
   s.goals=Object.assign({kcal:S.kcalTarget||1700,protein:110,carbs:190,fat:55,fibre:30,sugar:90,sat:30,salt:6},s.goals||{});
   s.goals.kcal=S.kcalTarget||s.goals.kcal;
   s.split=Object.assign({Breakfast:25,Lunch:30,Dinner:35,Snack:10},s.split||{});
-  if(s.exAdds===undefined) s.exAdds=true; s.fastTarget=s.fastTarget||16; if(s.trainKcal===undefined) s.trainKcal=null;
+  if(s.exAdds===undefined) s.exAdds=true; if(s.exTrain===undefined) s.exTrain=true; if(s.exSteps===undefined) s.exSteps=true; if(!(s.stepBase>=0)) s.stepBase=5000; s.fastTarget=s.fastTarget||16; if(s.trainKcal===undefined) s.trainKcal=null;
   s.profile=Object.assign({age:null,height:null,weight:null,sex:'m',act:'1.375',goal:'0'},s.profile||{});
   G.ai=Object.assign({key:'',quick:'claude-haiku-5-5',main:'claude-sonnet-5-5'},G.ai||{});
   const ft=TRACKERS.find(t=>t.id==='fibre'); if(ft) ft.target=s.goals.fibre||30;
@@ -1476,7 +1478,20 @@ function gdClean(o){ const n={}; GD_NK.forEach(k=>{ const v=Number(o&&o[k]); n[k
 function entryN(x){ return x.n||{kcal:Number(x.kcal)||0}; }
 function nutDay(d,k,filter){ return foodDay(d).filter(x=>!filter||filter(x)).reduce((a,x)=>a+(Number(entryN(x)[k])||0)*(x.qty||1),0); }
 function kcalDay(d=today()){ return Math.round(nutDay(d,'kcal')); }
-function kcalAllow(d=today()){ const G=gd(), dd=G.days[d]||{}; const base=(dd.training&&G.settings.trainKcal)?G.settings.trainKcal:(S.kcalTarget||1700); return base+(G.settings.exAdds?(Number(dd.exKcal)||0):0); }
+/* ---------- exercise calories (Train tab, steps, manual) ---------- */
+function gdWeight(){ const p=gd().settings.profile; return p.weight>30?p.weight:80; }
+function gdSetKcal(x){ const ex=exById(x.ex); if(!ex) return 0; const W=gdWeight(), amt=Number(x.amt)||0; const vm=(ex.variants&&ex.variants[String(x.variant||'').split(' · ')[0]])||1; const id=ex.id, cat=ex.cat||'';
+  const met=(m,mins)=>m*3.5*W/200*mins;
+  if(ex.unit==='km') return amt*W*(id==='run'?1.0:id==='cycle'?0.3:id==='walk'?0.55*Math.min(vm,1.6):0.6);
+  if(ex.unit==='metres') return amt*0.0033*W*Math.min(vm,1.4);
+  if(ex.unit==='minutes') return met((id==='badminton'?5.5:id==='sport'?7:/stretch|mobility|yoga/i.test(ex.name+cat)?2.5:5)*(cat.startsWith('Mobility')?1:Math.min(vm,1.6)),amt);
+  if(ex.unit==='seconds') return met(cat.startsWith('Mobility')?2.3:cat==='Kettlebell'?4*Math.min(vm,2):3.8*Math.min(vm,1.6),amt/60);
+  if(ex.unit==='reps'){ if(cat==='Kettlebell') return amt*0.45*vm; if(cat.startsWith('Mobility')) return amt*0.08; const per=id==='burpees'?1.0:id==='pullups'?0.9:id==='dips'?0.6:id==='pushups'?0.4:id==='squats'?0.35:id==='situps'?0.25:0.3; return amt*per*Math.min(vm,3)*W/75; }
+  return 0; }
+function gdTrainKcal(d){ return Math.round((S.sets||[]).filter(x=>x.date===d).reduce((a,x)=>a+gdSetKcal(x),0)); }
+function gdStepKcal(d){ const st=habitCount('steps',d), base=gd().settings.stepBase||0; return Math.round(Math.max(0,st-base)*0.04*gdWeight()/70); }
+function gdExKcal(d){ const s=gd().settings, dd=gd().days[d]||{}; return (Number(dd.exKcal)||0)+(s.exTrain?gdTrainKcal(d):0)+(s.exSteps?gdStepKcal(d):0); }
+function kcalAllow(d=today()){ const G=gd(), dd=G.days[d]||{}; const base=(dd.training&&G.settings.trainKcal)?G.settings.trainKcal:(S.kcalTarget||1700); return base+(G.settings.exAdds?gdExKcal(d):0); }
 
 /* ---------- writes ---------- */
 function gdChanged(d){
@@ -1499,7 +1514,7 @@ function gdAdd(name,n,qty){
 }
 function gdRemember(name,n){ const L=gd().lib; if(!L.items.some(x=>x.name.toLowerCase()===name.toLowerCase())&&!GD_FOODS.some(f=>f.name.toLowerCase()===name.toLowerCase())){ L.items.unshift({name,n}); L.items=L.items.slice(0,300); } }
 function delFood(id){ S.food[gdDate]=(S.food[gdDate]||[]).filter(x=>x.id!==id); gdChanged(gdDate); }
-function gdQty(id,delta){ const x=(S.food[gdDate]||[]).find(i=>i.id===id); if(!x) return; if(!x.n){ x.n={kcal:x.kcal||0}; x.qty=1; } const q=(x.qty||1)+delta; if(q<0.5){ delFood(id); return; } x.qty=r1(q); gdChanged(gdDate); }
+function gdQty(id,delta){ const x=(S.food[gdDate]||[]).find(i=>i.id===id); if(!x) return; if(!x.n){ x.n={kcal:x.kcal||0}; x.qty=1; } const q=(x.qty||1)+delta; if(q<0.25){ delFood(id); return; } x.qty=Math.round(q*100)/100; gdChanged(gdDate); }
 async function gdCopy(meal){
   const y=addDays(gdDate,-1), items=foodDay(y).filter(x=>!meal||x.meal===meal);
   if(!items.length){ gdToast('Nothing logged '+(meal?'for '+GD_ML[meal]+' ':'')+'yesterday'); return; }
@@ -1542,6 +1557,7 @@ function gdTyping(){ const a=document.activeElement; const v=document.getElement
 function renderFood(){
   const v=document.getElementById('v-food'); if(!v) return; gd();
   if(gdTyping()) return;
+  if(gdDate===today()&&foodDay(gdDate).length){ try{ const t=S.tasks.find(x=>x.link&&x.link.ex==='tracker:food'); if(t&&t.last!==today()&&foodHealthy()) completeLinked('tracker:food'); }catch(e){} }
   if(!gdLastFibre||gdLastFibre.d!==gdDate) gdLastFibre={d:gdDate,v:nutDay(gdDate,'fibre')};
   const tabs=[['diary','Diary'],['trends','Trends'],['plan','Plan'],['settings','Settings']];
   let h=`<div class="chips gd-tabs">${tabs.map(([k,l])=>`<button class="chip ${gdView===k?'on':''}" onclick="gdSetView('${k}')">${l}</button>`).join('')}</div>`;
@@ -1552,15 +1568,15 @@ function renderFood(){
 function gdDiaryHTML(){
   const G=gd(), d=gdDate, dd=gdDayR(d), s=G.settings, gl=s.goals;
   const lbl=d===today()?'Today':d===addDays(today(),-1)?'Yesterday':d===addDays(today(),1)?'Tomorrow':new Date(d+'T12:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-  const allow=kcalAllow(d), food=kcalDay(d), ex=s.exAdds?(Number(dd.exKcal)||0):0, base=allow-ex, rem=allow-food;
+  const allow=kcalAllow(d), food=kcalDay(d), ex=s.exAdds?gdExKcal(d):0, base=allow-ex, net=food-ex, rem=base-net;
   const fib=nutDay(d,'fibre'), fg=gl.fibre||30, C=2*Math.PI*48, off=C*(1-Math.min(fib/fg,1));
   const bars=GD_NUTS.filter(n=>n[0]!=='kcal'&&n[0]!=='fibre').map(([k,l,u])=>{ const val=nutDay(d,k), g=gl[k]||1, over=GD_LIMITS.includes(k)&&val>g; return `<div class="gd-nut ${over?'over':''}"><span>${l}</span><div class="bar"><i style="width:${Math.min(100,val/g*100)}%"></i></div><span class="v"><b>${r1(val)}${u}</b> / ${g}${u}</span></div>`; }).join('');
   const water=habitCount('water',d), meals=new Set(foodDay(d).map(x=>x.meal)), done=(S.diaryDone||{})[d];
   const state=d!==today()?'':foodHealthy(d)?'<span class="ok">Healthy eating ✓</span>':`Log ${['Breakfast','Lunch','Dinner'].filter(m=>!meals.has(m)).join(', ')||'all meals'}${food>allow?' · over target':''} for the quest`;
   let h=`<div class="row gd-daynav"><button class="btn sm" onclick="gdShift(-1)" aria-label="Previous day">‹</button><b class="disp" style="font-size:20px">${lbl}</b><button class="btn sm" onclick="gdShift(1)" aria-label="Next day" ${d>=addDays(today(),1)?'disabled':''}>›</button></div>
   <div class="win">
-    <div class="gd-eq"><div><div class="kcal">${fmt(base)}</div><span>Goal</span></div><div><div class="kcal">${fmt(food)}</div><span>− Food</span></div><div><div class="kcal">${fmt(ex)}</div><span>+ Exercise</span></div><div class="${rem<0?'neg':'pos'}"><div class="kcal">${fmt(rem)}</div><span>= Left</span></div></div>
-    <div class="bar ${food>allow?'hp':''}"><i style="width:${Math.min(100,food/Math.max(1,allow)*100)}%"></i></div>
+    <div class="gd-eq"><div><div class="kcal">${fmt(food)}</div><span>Food</span></div><div class="gd-tap gd-exbtn" onclick="gdExBreak('${d}')" role="button" aria-label="Exercise breakdown"><div class="kcal">${s.exAdds?'−':''}${fmt(gdExKcal(d))}</div><span>Exercise ›</span></div><div><div class="kcal">${fmt(net)}</div><span>= Net</span></div><div class="${rem<0?'neg':'pos'}"><div class="kcal">${fmt(Math.abs(rem))}</div><span>${rem<0?'over':'left'} of ${fmt(base)}</span></div></div>
+    <div class="bar ${net>base?'hp':''}"><i style="width:${Math.min(100,Math.max(0,net)/Math.max(1,base)*100)}%"></i></div>${s.exAdds?'':'<div class="muted" style="font-size:11px">Exercise isn’t subtracted (turned off in Settings).</div>'}
     <div class="gd-hero">
       <div class="gd-ring"><svg width="116" height="116" viewBox="0 0 116 116"><circle cx="58" cy="58" r="48" fill="none" stroke="#1a2548" stroke-width="12"/><circle cx="58" cy="58" r="48" fill="none" stroke="${fib>=fg?'var(--gold)':'var(--ok)'}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}" transform="rotate(-90 58 58)"/></svg><div class="c"><div class="disp">${r1(fib)}</div><span>of ${fg}g fibre</span></div></div>
       <div>${bars}<div class="muted" style="font-size:11px;margin-top:4px">Net carbs: ${r1(Math.max(0,nutDay(d,'carbs')-fib))}g</div></div>
@@ -1571,7 +1587,7 @@ function gdDiaryHTML(){
   <button class="btn primary gd-addbig" onclick="gdOpen()">+ Add food</button>`;
   h+=GD_MEALS.map(m=>{ const items=foodDay(d).filter(x=>x.meal===m); const kc=items.reduce((a,x)=>a+(entryN(x).kcal||0)*(x.qty||1),0), fb=items.reduce((a,x)=>a+(entryN(x).fibre||0)*(x.qty||1),0), mg=Math.round(allow*(s.split[m]||0)/100);
     return `<div class="meal"><h3>${GD_ML[m]}<span>${fmt(kc)} / ${fmt(mg)} kcal</span></h3><div class="muted" style="font-size:12px">${r1(fb)}g fibre</div><div class="bar ${kc>mg*1.1&&mg?'hp':''}" style="height:5px"><i style="width:${mg?Math.min(100,kc/mg*100):0}%"></i></div>
-    ${items.map(x=>{ const n=entryN(x), q=x.qty||1; return `<div class="fitem gd-item"><span>${esc(x.name)}<div class="muted" style="font-size:11px"><b class="ok">${r1((n.fibre||0)*q)}g fibre</b> · ${fmt((n.kcal||0)*q)} kcal${x.n?` · P ${r1((n.protein||0)*q)} C ${r1((n.carbs||0)*q)} F ${r1((n.fat||0)*q)}`:''}${x.time?' · '+x.time:''}</div></span><span class="gd-qty"><button class="btn sm" onclick="gdQty('${x.id}',-0.5)" aria-label="Less">${q>0.5?'−':'×'}</button><b>${q%1?q.toFixed(1):q}×</b><button class="btn sm" onclick="gdQty('${x.id}',0.5)" aria-label="More">+</button></span></div>`; }).join('')}
+    ${items.map(x=>{ const n=entryN(x), q=x.qty||1; const bg=gdBaseG(x); return `<div class="fitem gd-item"><span class="gd-tap" onclick="gdEdit('${x.id}')">${esc(x.name)}<div class="muted" style="font-size:11px">${bg?Math.round(bg*q)+'g · ':''}<b class="ok">${r1((n.fibre||0)*q)}g fibre</b> · ${fmt((n.kcal||0)*q)} kcal${x.n?` · P ${r1((n.protein||0)*q)} C ${r1((n.carbs||0)*q)} F ${r1((n.fat||0)*q)}`:''}${x.time?' · '+x.time:''}</div></span><span class="gd-qty"><button class="btn sm" onclick="gdQty('${x.id}',-0.5)" aria-label="Less">${q>0.5?'−':'×'}</button><b>${q%1?(Math.round(q*100)/100):q}×</b><button class="btn sm" onclick="gdQty('${x.id}',0.5)" aria-label="More">+</button></span></div>`; }).join('')}
     <div class="gd-acts"><button class="btn sm" onclick="gdOpen('${m}')">+ Add</button><button class="btn sm" onclick="gdCopy('${m}')">Copy yesterday</button>${items.length?`<button class="btn sm" onclick="gdSaveMeal('${m}')">Save as meal</button>`:''}</div></div>`; }).join('');
   h+=`<button class="btn sm" style="width:100%;margin-bottom:14px" onclick="gdCopy(null)">Copy all from yesterday</button>`;
   // fasting
@@ -1583,7 +1599,12 @@ function gdDiaryHTML(){
   // water
   h+=`<div class="win"><h2>Water <small>${water} of 8 cups · shared with Quests</small></h2><div class="gd-glasses">${Array.from({length:10},(_,i)=>`<button class="${i<water?'on':''}" onclick="gdWater(${i+1})" aria-label="${i+1} cups"></button>`).join('')}</div></div>`;
   // exercise
-  h+=`<div class="win"><h2>Exercise</h2><div class="row" style="gap:8px"><input type="number" inputmode="numeric" min="0" placeholder="Calories burned" value="${dd.exKcal||''}" onchange="gdSetDay('exKcal',Math.max(0,Number(this.value)||0))"><button class="btn sm ${dd.training?'primary':''}" onclick="gdSetDay('training',${!dd.training})">${dd.training?'Training day ✓':'Training day'}</button></div><div class="muted" style="font-size:12px;margin-top:6px">${s.exAdds?'Exercise calories raise today’s limit, including for the Healthy eating quest.':'Exercise calories are not added to your limit.'} Badminton is roughly 350–450 kcal an hour.</div></div>`;
+  { const tk=gdTrainKcal(d), sk=gdStepKcal(d), man=Number(dd.exKcal)||0, steps=habitCount('steps',d), tot=gdExKcal(d), sets=(S.sets||[]).filter(x=>x.date===d);
+  h+=`<div class="win"><h2>Exercise <small>${fmt(tot)} kcal ${s.exAdds?'added to today':'(not added to your limit)'}</small></h2>
+    <div class="fitem gd-tap" onclick="gdExBreak('${d}')"><span>From Train tab${s.exTrain?'':' <span class="muted">(off)</span>'}<div class="muted" style="font-size:11px">${sets.length?sets.length+' set'+(sets.length>1?'s':'')+' logged · estimate':'Nothing logged in Train today'} · tap for breakdown</div></span><b>${s.exTrain?fmt(tk):'–'} kcal</b></div>
+    <div class="fitem"><span>From steps${s.exSteps?'':' <span class="muted">(off)</span>'}<div class="muted" style="font-size:11px">${fmt(steps)} steps · counts steps above ${fmt(s.stepBase)}</div></span><b>${s.exSteps?fmt(sk):'–'} kcal</b></div>
+    <div class="fitem"><span>Other activity<div class="muted" style="font-size:11px">Anything not logged in Train</div></span><span style="white-space:nowrap"><input type="number" inputmode="numeric" min="0" placeholder="0" value="${man||''}" style="width:80px;padding:4px 8px;display:inline-block" onchange="gdSetDay('exKcal',Math.max(0,Number(this.value)||0))"> kcal</span></div>
+    <div class="row" style="margin-top:10px;gap:8px"><span class="muted" style="font-size:12px">${s.trainKcal?'Training day switches your goal from '+fmt(S.kcalTarget||1700)+' to '+fmt(s.trainKcal)+' kcal.':'Training day is just a label until you set training-day calories in Settings.'}</span><button class="btn sm ${dd.training?'primary':''}" onclick="gdSetDay('training',${!dd.training})">${dd.training?'Training day ✓':'Training day'}</button></div></div>`; }
   // stress
   h+=`<div class="win"><h2>Stress</h2><div class="gd-scale">${Array.from({length:10},(_,i)=>`<button class="${dd.stress===i+1?'on':''}" onclick="gdStress(${i+1})">${i+1}</button>`).join('')}</div><div class="row muted" style="font-size:11px;margin:4px 0 8px"><span>Calm</span><span>Very stressed</span></div><input placeholder="What’s on your mind?" value="${esc(dd.stressNote||'')}" onchange="gdSetDay('stressNote',this.value)"></div>`;
   // toilet
@@ -1735,7 +1756,7 @@ async function gdTips(){ const out=document.getElementById('gdTipsOut'); if(!gd(
     out.innerHTML=((r&&r.tips)||[]).slice(0,3).map(t=>`<div class="gd-ins">${esc(String(t))}</div>`).join('')||'<div class="gd-ins">Log a few more days for useful tips.</div>'; }catch(e){ out.innerHTML='<div class="gd-ins">'+esc(gdErr(e))+'</div>'; } }
 function gdCsv(){ const G=gd(); const ds=new Set([...Object.keys(S.food||{}),...Object.keys(G.days)]); const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
   const rows=[['Date','Fibre (g)','Calories','Protein (g)','Carbs (g)','Sugars (g)','Fat (g)','Saturates (g)','Salt (g)','Foods','Water (cups)','Steps','Stress (1-10)','Stress note','Toilet visits','Stool types','Strained','Blood on tissue','Exercise kcal','Weight (kg)','Notes']];
-  [...ds].sort().forEach(d=>{ const dd=gdDayR(d); rows.push([d,r1(nutDay(d,'fibre')),kcalDay(d),r1(nutDay(d,'protein')),r1(nutDay(d,'carbs')),r1(nutDay(d,'sugar')),r1(nutDay(d,'fat')),r1(nutDay(d,'sat')),r1(nutDay(d,'salt')),foodDay(d).map(x=>(x.time?x.time+' ':'')+x.name+((x.qty||1)!==1?' x'+x.qty:'')).join('; '),habitCount('water',d),habitCount('steps',d),dd.stress??'',dd.stressNote,dd.bm.length,dd.bm.map(b=>b.type||'-').join(' '),dd.bm.some(b=>b.strain)?'yes':'',dd.bm.some(b=>b.blood)?'yes':'',dd.exKcal||'',dd.weight||'',dd.notes]); });
+  [...ds].sort().forEach(d=>{ const dd=gdDayR(d); rows.push([d,r1(nutDay(d,'fibre')),kcalDay(d),r1(nutDay(d,'protein')),r1(nutDay(d,'carbs')),r1(nutDay(d,'sugar')),r1(nutDay(d,'fat')),r1(nutDay(d,'sat')),r1(nutDay(d,'salt')),foodDay(d).map(x=>(x.time?x.time+' ':'')+x.name+((x.qty||1)!==1?' x'+x.qty:'')).join('; '),habitCount('water',d),habitCount('steps',d),dd.stress??'',dd.stressNote,dd.bm.length,dd.bm.map(b=>b.type||'-').join(' '),dd.bm.some(b=>b.strain)?'yes':'',dd.bm.some(b=>b.blood)?'yes':'',gdExKcal(d)||'',dd.weight||'',dd.notes]); });
   const csv=rows.map(r=>r.map(q).join(',')).join('\n'), fname='gut-diary-'+today()+'.csv';
   if(window.Android&&Android.saveFile){ Android.saveFile(fname,csv); } else { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download=fname; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); } gdToast('Diary exported'); }
 
@@ -1762,6 +1783,9 @@ function gdSettingsHTML(){ const G=gd(), s=G.settings, p=s.profile, A=G.ai, hasF
   <div class="win"><h2>Daily goals <small>calories also set the Healthy eating quest</small></h2><div class="gd-grid3">${GD_NUTS.map(([k,l,u])=>`<label>${l}${u?' ('+u+')':''}${GD_LIMITS.includes(k)&&k!=='kcal'?' max':''}<input type="number" id="gdG_${k}" value="${s.goals[k]}"></label>`).join('')}</div>
     <div class="gd-grid2"><label>Training-day calories<input type="number" id="gdTk" value="${s.trainKcal||''}" placeholder="Same as normal"></label><label>Fast target (hours)<input type="number" id="gdFt" value="${s.fastTarget}"></label></div>
     <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="gdEx" style="width:auto" ${s.exAdds?'checked':''}> Add exercise calories to my daily limit</label>
+    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="gdExT" style="width:auto" ${s.exTrain?'checked':''}> Count workouts from the Train tab</label>
+    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="gdExS" style="width:auto" ${s.exSteps?'checked':''}> Count steps above <input type="number" id="gdSb" value="${s.stepBase}" style="width:84px;padding:3px 6px;display:inline-block"> a day</label>
+    <div class="muted" style="font-size:11px">Your activity level already covers everyday walking, so only steps above this number add calories. If you use training-day calories, consider turning exercise calories off so workouts aren’t counted twice.</div>
     <label>Calories by meal (%)</label><div class="gd-grid2">${GD_MEALS.map(m=>`<label>${GD_ML[m]}<input type="number" id="gdS_${m}" value="${s.split[m]}"></label>`).join('')}</div>
     <button class="btn primary" style="width:100%;margin-top:10px" onclick="gdSaveGoals()">Save goals</button></div>
   <div class="win"><h2>Quests</h2><p class="muted" style="font-size:13px;margin-top:0">Water here and on the Quests tab are the same count. Fibre feeds the Fibre tracker automatically for XP.</p>${hasFq?'<div class="ok" style="font-size:13px">“Eat '+(s.goals.fibre||30)+'g fibre” is on your daily quests.</div>':`<button class="btn sm primary" onclick="gdAddFibreQuest()">Add “Eat ${s.goals.fibre||30}g fibre” as a daily quest</button>`}</div>
@@ -1777,7 +1801,7 @@ function gdCalc(){ const a=+document.getElementById('gdA').value, h=+document.ge
 function gdSaveGoals(){ const G=gd(), s=G.settings;
   GD_NK.forEach(k=>{ const v=parseFloat(document.getElementById('gdG_'+k).value); if(isFinite(v)&&v>=0) s.goals[k]=k==='salt'?r1(v):Math.round(v); });
   S.kcalTarget=s.goals.kcal; const tk=parseFloat(document.getElementById('gdTk').value); s.trainKcal=isFinite(tk)&&tk>0?Math.round(tk):null;
-  const ft=parseFloat(document.getElementById('gdFt').value); s.fastTarget=isFinite(ft)?Math.min(24,Math.max(10,Math.round(ft))):16; s.exAdds=document.getElementById('gdEx').checked;
+  const ft=parseFloat(document.getElementById('gdFt').value); s.fastTarget=isFinite(ft)?Math.min(24,Math.max(10,Math.round(ft))):16; s.exAdds=document.getElementById('gdEx').checked; s.exTrain=document.getElementById('gdExT').checked; s.exSteps=document.getElementById('gdExS').checked; { const sb=parseFloat(document.getElementById('gdSb').value); s.stepBase=isFinite(sb)&&sb>=0?Math.round(sb):5000; }
   GD_MEALS.forEach(m=>s.split[m]=Math.max(0,parseFloat(document.getElementById('gdS_'+m).value)||0));
   s.profile={age:+document.getElementById('gdA').value||null,height:+document.getElementById('gdH').value||null,weight:+document.getElementById('gdWt').value||null,sex:document.getElementById('gdSx').value,act:document.getElementById('gdAc').value,goal:document.getElementById('gdGl').value};
   const fq=S.tasks.find(t=>t.link&&t.link.ex==='tracker:fibre'); if(fq) fq.link.target=s.goals.fibre; gd();
@@ -1796,6 +1820,40 @@ function gdImportText(txt){ let o; try{ o=JSON.parse(txt); }catch(e){ sys('Impor
   if(o.fast&&Array.isArray(o.fast.history)){ G.fast.history=merge(G.fast.history.map(h=>({...h,name:String(h.start)})),o.fast.history.map(h=>({...h,name:String(h.start)}))).map(({name,...h})=>h).sort((a,b)=>b.end-a.end).slice(0,120); if(!G.fast.active&&o.fast.active) G.fast.active=o.fast.active; }
   if(o.settings&&o.settings.goals&&!G._imported){ Object.assign(G.settings.goals,o.settings.goals); S.kcalTarget=G.settings.goals.kcal||S.kcalTarget; if(o.settings.split) G.settings.split=Object.assign(G.settings.split,o.settings.split); if(o.settings.trainKcal) G.settings.trainKcal=o.settings.trainKcal; if(o.settings.fastTarget) G.settings.fastTarget=o.settings.fastTarget; if(o.settings.exAdds!==undefined) G.settings.exAdds=o.settings.exAdds; if(o.settings.profile) G.settings.profile=Object.assign(G.settings.profile,o.settings.profile); G._imported=true; }
   gd(); checkFood(); save(); render(); sys('Gut diary imported',nf+' food entries across '+nd+' days merged in.'); return true; }
+
+/* ---------- edit a logged food ---------- */
+function gdBaseG(x){ if(x.g>0) return x.g; const m=[...String(x.name||'').matchAll(/(\d+(?:\.\d+)?)\s?g\b/gi)]; return m.length?Number(m[m.length-1][1]):0; }
+let gdEditId=null;
+function gdEdit(id){ const x=(S.food[gdDate]||[]).find(i=>i.id===id); if(!x) return; gdEditId=id; if(!x.n){ x.n={kcal:x.kcal||0}; x.qty=1; } const bg=gdBaseG(x), q=x.qty||1;
+  document.getElementById('modalBody').innerHTML=`<h2>Edit food</h2><div style="font-weight:600;margin-bottom:6px">${esc(x.name)}</div>
+    ${bg?`<label>Amount eaten (grams)</label><input type="number" inputmode="decimal" id="gdEg" min="1" step="1" value="${Math.round(bg*q)}" oninput="gdEditPrev()"><div class="chips" style="margin-top:6px">${[0.5,1,1.5,2].map(m=>`<button class="chip" onclick="document.getElementById('gdEg').value=${Math.round(bg*m)};gdEditPrev()">${Math.round(bg*m)}g</button>`).join('')}</div>`
+      :`<label>Servings</label><input type="number" inputmode="decimal" id="gdEq" min="0.25" step="0.25" value="${q}" oninput="gdEditPrev()">`}
+    <label>Meal</label><select id="gdEm">${GD_MEALS.map(m=>`<option value="${m}" ${x.meal===m?'selected':''}>${GD_ML[m]}</option>`).join('')}</select>
+    <div id="gdEp" class="gd-found"></div>
+    <div class="row" style="margin-top:12px;gap:8px"><button class="btn primary" onclick="gdEditSave()">Save</button><button class="btn danger" onclick="delFood('${x.id}');closeModal()">Delete</button><button class="btn" onclick="closeModal()">Cancel</button></div>`;
+  document.getElementById('modal').classList.add('on'); gdEditPrev(); }
+function gdEditQty(){ const x=(S.food[gdDate]||[]).find(i=>i.id===gdEditId); if(!x) return 0; const g=document.getElementById('gdEg'); if(g){ const bg=gdBaseG(x); return Math.max(0,Number(g.value)||0)/bg; } return Math.max(0,Number(document.getElementById('gdEq').value)||0); }
+function gdEditPrev(){ const x=(S.food[gdDate]||[]).find(i=>i.id===gdEditId); const box=document.getElementById('gdEp'); if(!x||!box) return; const q=gdEditQty(), n=x.n;
+  box.innerHTML=`<b>${fmt((n.kcal||0)*q)} kcal</b> · <b class="ok">${r1((n.fibre||0)*q)}g fibre</b><div class="muted" style="font-size:12px">Protein ${r1((n.protein||0)*q)}g · Carbs ${r1((n.carbs||0)*q)}g · Fat ${r1((n.fat||0)*q)}g · Sugars ${r1((n.sugar||0)*q)}g · Salt ${r1((n.salt||0)*q)}g</div>`; }
+function gdEditSave(){ const x=(S.food[gdDate]||[]).find(i=>i.id===gdEditId); if(!x) return; const q=gdEditQty(); if(!(q>0)){ delFood(x.id); closeModal(); return; } x.qty=Math.round(q*1000)/1000; const bg=gdBaseG(x); if(bg) x.g=bg; x.meal=document.getElementById('gdEm').value; closeModal(); gdChanged(gdDate); gdToast('Updated'); }
+
+/* ---------- exercise breakdown ---------- */
+function gdExBreak(d){ const G=gd(), s=G.settings, dd=G.days[d]||{}, sets=(S.sets||[]).filter(x=>x.date===d);
+  const groups={}; sets.forEach(x=>{ const ex=exById(x.ex); const k=x.ex+'|'+String(x.variant||'').split(' · ')[0]; const g=groups[k]||(groups[k]={name:ex?ex.name:x.ex,variant:String(x.variant||'').split(' · ')[0],unit:ex?ex.unit:'',amt:0,kcal:0,sets:0}); g.amt+=Number(x.amt)||0; g.kcal+=gdSetKcal(x); g.sets++; });
+  const rows=Object.values(groups).sort((a,b)=>b.kcal-a.kcal);
+  const tk=gdTrainKcal(d), sk=gdStepKcal(d), man=Number(dd.exKcal)||0, steps=habitCount('steps',d), tot=gdExKcal(d);
+  const u=(g)=>g.unit==='seconds'?(g.amt>=60?Math.round(g.amt/60*10)/10+' min':g.amt+' sec'):g.unit==='minutes'?g.amt+' min':g.unit==='km'?Math.round(g.amt*10)/10+' km':g.unit==='metres'?g.amt+' m':g.amt+' reps';
+  document.getElementById('modalBody').innerHTML=`<h2>Exercise · ${d===today()?'today':new Date(d+'T12:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</h2>
+    <div class="kcal" style="margin:4px 0">${fmt(tot)} kcal</div><div class="muted" style="font-size:12px;margin-bottom:8px">${s.exAdds?'Subtracted from what you ate to give your net intake.':'Not subtracted: exercise calories are turned off in Food → Settings.'}</div>
+    <label>From Train tab ${s.exTrain?'':'(off)'} · ${fmt(tk)} kcal</label>
+    ${rows.length?rows.map(g=>`<div class="fitem"><span>${esc(g.name)}<div class="muted" style="font-size:11px">${esc(g.variant)}${g.variant?' · ':''}${u(g)}${g.sets>1?' · '+g.sets+' sets':''}</div></span><b>${fmt(g.kcal)} kcal</b></div>`).join(''):'<div class="muted" style="font-size:13px">No workouts logged in Train this day.</div>'}
+    <label>From steps ${s.exSteps?'':'(off)'} · ${fmt(sk)} kcal</label>
+    <div class="fitem"><span>${fmt(steps)} steps<div class="muted" style="font-size:11px">${fmt(Math.max(0,steps-(s.stepBase||0)))} above your ${fmt(s.stepBase)} baseline · about 40 kcal per 1,000 at 70kg</div></span><b>${fmt(sk)} kcal</b></div>
+    <label>Other activity · ${fmt(man)} kcal</label>
+    <div class="row" style="gap:6px"><input type="number" inputmode="numeric" min="0" id="gdExMan" value="${man||''}" placeholder="0"><button class="btn sm primary" onclick="gdDayW('${d}').exKcal=Math.max(0,Number(document.getElementById('gdExMan').value)||0);save();closeModal();render()">Save</button></div>
+    <div class="muted" style="font-size:11px;margin-top:10px">Workout calories are estimates from the exercise, weight or intensity, amount and your body weight (${gdWeight()}kg${G.settings.profile.weight>30?'':', default until you set it in Food → Settings'}). Log a workout in Train or type it into Other activity, not both.</div>
+    <div class="row" style="margin-top:12px"><span></span><button class="btn" onclick="closeModal()">Close</button></div>`;
+  document.getElementById('modal').classList.add('on'); }
 
 function foodHealthy(d=today()){ const items=foodDay(d); if(!items.length) return false; const meals=new Set(items.map(x=>x.meal)); const complete=(meals.has('Breakfast')&&meals.has('Lunch')&&meals.has('Dinner'))||(S.diaryDone||{})[d]; return !!complete&&kcalDay(d)<=kcalAllow(d); }
 function finishDiary(){ const d=today(); if(!foodDay(d).length){ sys('Diary','Log at least one meal first.'); return; } S.diaryDone=S.diaryDone||{}; S.diaryDone[d]=true; checkFood(); save(); render(); sys('Diary closed',kcalDay(d)<=kcalAllow(d)?fmt(kcalDay(d))+' kcal — under target. Healthy eating ticked.':fmt(kcalDay(d))+' kcal — over target today.'); }
