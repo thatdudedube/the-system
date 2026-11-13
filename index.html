@@ -1466,7 +1466,7 @@ function gd(){
   s.goals=Object.assign({kcal:S.kcalTarget||1700,protein:110,carbs:190,fat:55,fibre:30,sugar:90,sat:30,salt:6},s.goals||{});
   s.goals.kcal=S.kcalTarget||s.goals.kcal;
   s.split=Object.assign({Breakfast:25,Lunch:30,Dinner:35,Snack:10},s.split||{});
-  if(s.exAdds===undefined) s.exAdds=true; if(s.exTrain===undefined) s.exTrain=true; if(s.exSteps===undefined) s.exSteps=true; if(!(s.stepBase>=0)||s.stepV!==2){ s.stepBase=0; s.stepV=2; } s.fastTarget=s.fastTarget||16; if(s.trainKcal===undefined) s.trainKcal=null;
+  if(s.exAdds===undefined) s.exAdds=true; if(s.exTrain===undefined) s.exTrain=true; if(s.exSteps===undefined) s.exSteps=true; if(s.exStairs===undefined) s.exStairs=true; if(!(s.stepBase>=0)||s.stepV!==2){ s.stepBase=0; s.stepV=2; } s.fastTarget=s.fastTarget||16; if(s.trainKcal===undefined) s.trainKcal=null;
   s.profile=Object.assign({age:null,height:null,weight:null,sex:'m',act:'1.375',goal:'0'},s.profile||{});
   G.ai=Object.assign({key:'',quick:'claude-haiku-5-5',main:'claude-sonnet-5-5'},G.ai||{});
   const ft=TRACKERS.find(t=>t.id==='fibre'); if(ft) ft.target=s.goals.fibre||30;
@@ -1490,7 +1490,8 @@ function gdSetKcal(x){ const ex=exById(x.ex); if(!ex) return 0; const W=gdWeight
   return 0; }
 function gdTrainKcal(d){ return Math.round((S.sets||[]).filter(x=>x.date===d).reduce((a,x)=>a+gdSetKcal(x),0)); }
 function gdStepKcal(d){ const st=habitCount('steps',d), base=gd().settings.stepBase||0; return Math.round(Math.max(0,st-base)*0.04*gdWeight()/70); }
-function gdExKcal(d){ const s=gd().settings, dd=gd().days[d]||{}; return (Number(dd.exKcal)||0)+(s.exTrain?gdTrainKcal(d):0)+(s.exSteps?gdStepKcal(d):0); }
+function gdStairKcal(d){ return Math.round(habitCount('stairs',d)*1.5*gdWeight()/70); }
+function gdExKcal(d){ const s=gd().settings, dd=gd().days[d]||{}; return (Number(dd.exKcal)||0)+(s.exTrain?gdTrainKcal(d):0)+(s.exSteps?gdStepKcal(d):0)+(s.exStairs?gdStairKcal(d):0); }
 function kcalAllow(d=today()){ const G=gd(), dd=G.days[d]||{}; const base=(dd.training&&G.settings.trainKcal)?G.settings.trainKcal:(S.kcalTarget||1700); return base+(G.settings.exAdds?gdExKcal(d):0); }
 
 /* ---------- writes ---------- */
@@ -1603,6 +1604,7 @@ function gdDiaryHTML(){
   h+=`<div class="win"><h2>Exercise <small>${fmt(tot)} kcal ${s.exAdds?'added to today':'(not added to your limit)'}</small></h2>
     <div class="fitem gd-tap" onclick="gdExBreak('${d}')"><span>From Train tab${s.exTrain?'':' <span class="muted">(off)</span>'}<div class="muted" style="font-size:11px">${sets.length?sets.length+' set'+(sets.length>1?'s':'')+' logged · estimate':'Nothing logged in Train today'} · tap for breakdown</div></span><b>${s.exTrain?fmt(tk):'–'} kcal</b></div>
     <div class="fitem"><span>From steps${s.exSteps?'':' <span class="muted">(off)</span>'}<div class="muted" style="font-size:11px">${fmt(steps)} steps${s.stepBase?' · counts steps above '+fmt(s.stepBase):' · every step counts'}</div></span><b>${s.exSteps?fmt(sk):'–'} kcal</b></div>
+    <div class="fitem"><span>From stairs${s.exStairs?'':' <span class="muted">(off)</span>'}<div class="muted" style="font-size:11px">${habitCount('stairs',d)} flights · from the Stairs tracker</div></span><b>${s.exStairs?fmt(gdStairKcal(d)):'–'} kcal</b></div>
     <div class="fitem"><span>Other activity<div class="muted" style="font-size:11px">Anything not logged in Train</div></span><span style="white-space:nowrap"><input type="number" inputmode="numeric" min="0" placeholder="0" value="${man||''}" style="width:80px;padding:4px 8px;display:inline-block" onchange="gdSetDay('exKcal',Math.max(0,Number(this.value)||0))"> kcal</span></div>
     <div class="row" style="margin-top:10px;gap:8px"><span class="muted" style="font-size:12px">${s.trainKcal?'Training day switches your goal from '+fmt(S.kcalTarget||1700)+' to '+fmt(s.trainKcal)+' kcal.':'Training day is just a label until you set training-day calories in Settings.'}</span><button class="btn sm ${dd.training?'primary':''}" onclick="gdSetDay('training',${!dd.training})">${dd.training?'Training day ✓':'Training day'}</button></div></div>`; }
   // stress
@@ -1784,6 +1786,7 @@ function gdSettingsHTML(){ const G=gd(), s=G.settings, p=s.profile, A=G.ai, hasF
     <div class="gd-grid2"><label>Training-day calories<input type="number" id="gdTk" value="${s.trainKcal||''}" placeholder="Same as normal"></label><label>Fast target (hours)<input type="number" id="gdFt" value="${s.fastTarget}"></label></div>
     <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="gdEx" style="width:auto" ${s.exAdds?'checked':''}> Add exercise calories to my daily limit</label>
     <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="gdExT" style="width:auto" ${s.exTrain?'checked':''}> Count workouts from the Train tab</label>
+    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="gdExSt" style="width:auto" ${s.exStairs?'checked':''}> Count flights from the Stairs tracker</label>
     <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="gdExS" style="width:auto" ${s.exSteps?'checked':''}> Count steps above <input type="number" id="gdSb" value="${s.stepBase}" style="width:84px;padding:3px 6px;display:inline-block"> a day</label>
     <div class="muted" style="font-size:11px">0 = every step counts. Because steps and workouts are added on top, your goal is calculated as “Mostly sitting” so nothing is counted twice. If you use training-day calories, turn exercise calories off for the same reason.</div>
     <label>Calories by meal (%)</label><div class="gd-grid2">${GD_MEALS.map(m=>`<label>${GD_ML[m]}<input type="number" id="gdS_${m}" value="${s.split[m]}"></label>`).join('')}</div>
@@ -1795,13 +1798,13 @@ function gdKeyClear(){ gd().ai.key=''; save(); renderFood(); }
 async function gdTestKey(){ gdSaveKey(); const m=document.getElementById('gdKeyMsg'); m.textContent='Testing…'; try{ const r=await gdAI('Reply with ONLY this JSON: {"ok":true}',{max:20}); m.textContent=r&&r.ok?'Connected ✓ ('+gd().ai.quick+')':'Connected, but the reply was unexpected.'; }catch(e){ m.textContent=gdErr(e); } }
 function gdCalc(){ const a=+document.getElementById('gdA').value, h=+document.getElementById('gdH').value, w=+document.getElementById('gdWt').value, sx=document.getElementById('gdSx').value, ac=+document.getElementById('gdAc').value, g=+document.getElementById('gdGl').value;
   if(!a||!h||!w){ document.getElementById('gdCalcOut').textContent='Enter your age, height and weight first.'; return; }
-  const S2=gd().settings, sep=S2.exAdds&&(S2.exTrain||S2.exSteps), acU=sep?1.2:ac; const bmr=10*w+6.25*h-5*a+(sx==='m'?5:-161), tdee=bmr*acU, kcal=Math.round((tdee+g)/10)*10, pr=Math.round(w*1.6), fat=Math.round(kcal*.3/9), cb=Math.max(0,Math.round((kcal-pr*4-fat*9)/4));
+  const S2=gd().settings, sep=S2.exAdds&&(S2.exTrain||S2.exSteps||S2.exStairs), acU=sep?1.2:ac; const bmr=10*w+6.25*h-5*a+(sx==='m'?5:-161), tdee=bmr*acU, kcal=Math.round((tdee+g)/10)*10, pr=Math.round(w*1.6), fat=Math.round(kcal*.3/9), cb=Math.max(0,Math.round((kcal-pr*4-fat*9)/4));
   const set=(k,v)=>document.getElementById('gdG_'+k).value=v; set('kcal',kcal); set('protein',pr); set('fat',fat); set('carbs',cb); set('fibre',30); set('sugar',90); set('sat',sx==='m'?30:20); set('salt',6); document.getElementById('gdTk').value=Math.round((kcal+300)/10)*10;
   document.getElementById('gdCalcOut').textContent=(sep?'Your steps and workouts are added on top each day, so this uses a resting baseline (“Mostly sitting”) instead of your activity level. ':'')+'Base need is about '+fmt(tdee)+' kcal a day. Goal: '+fmt(kcal)+' kcal with '+pr+'g protein. Tap Save goals to keep these.'; }
 function gdSaveGoals(){ const G=gd(), s=G.settings;
   GD_NK.forEach(k=>{ const v=parseFloat(document.getElementById('gdG_'+k).value); if(isFinite(v)&&v>=0) s.goals[k]=k==='salt'?r1(v):Math.round(v); });
   S.kcalTarget=s.goals.kcal; const tk=parseFloat(document.getElementById('gdTk').value); s.trainKcal=isFinite(tk)&&tk>0?Math.round(tk):null;
-  const ft=parseFloat(document.getElementById('gdFt').value); s.fastTarget=isFinite(ft)?Math.min(24,Math.max(10,Math.round(ft))):16; s.exAdds=document.getElementById('gdEx').checked; s.exTrain=document.getElementById('gdExT').checked; s.exSteps=document.getElementById('gdExS').checked; { const sb=parseFloat(document.getElementById('gdSb').value); s.stepBase=isFinite(sb)&&sb>=0?Math.round(sb):0; }
+  const ft=parseFloat(document.getElementById('gdFt').value); s.fastTarget=isFinite(ft)?Math.min(24,Math.max(10,Math.round(ft))):16; s.exAdds=document.getElementById('gdEx').checked; s.exTrain=document.getElementById('gdExT').checked; s.exSteps=document.getElementById('gdExS').checked; s.exStairs=document.getElementById('gdExSt').checked; { const sb=parseFloat(document.getElementById('gdSb').value); s.stepBase=isFinite(sb)&&sb>=0?Math.round(sb):0; }
   GD_MEALS.forEach(m=>s.split[m]=Math.max(0,parseFloat(document.getElementById('gdS_'+m).value)||0));
   s.profile={age:+document.getElementById('gdA').value||null,height:+document.getElementById('gdH').value||null,weight:+document.getElementById('gdWt').value||null,sex:document.getElementById('gdSx').value,act:document.getElementById('gdAc').value,goal:document.getElementById('gdGl').value};
   const fq=S.tasks.find(t=>t.link&&t.link.ex==='tracker:fibre'); if(fq) fq.link.target=s.goals.fibre; gd();
@@ -1849,6 +1852,8 @@ function gdExBreak(d){ const G=gd(), s=G.settings, dd=G.days[d]||{}, sets=(S.set
     ${rows.length?rows.map(g=>`<div class="fitem"><span>${esc(g.name)}<div class="muted" style="font-size:11px">${esc(g.variant)}${g.variant?' · ':''}${u(g)}${g.sets>1?' · '+g.sets+' sets':''}</div></span><b>${fmt(g.kcal)} kcal</b></div>`).join(''):'<div class="muted" style="font-size:13px">No workouts logged in Train this day.</div>'}
     <label>From steps ${s.exSteps?'':'(off)'} · ${fmt(sk)} kcal</label>
     <div class="fitem"><span>${fmt(steps)} steps<div class="muted" style="font-size:11px">${s.stepBase?fmt(Math.max(0,steps-s.stepBase))+' above your '+fmt(s.stepBase)+' baseline · ':'every step counts · '}about ${Math.round(40*gdWeight()/70)} kcal per 1,000 steps at your weight</div></span><b>${fmt(sk)} kcal</b></div>
+    <label>From stairs ${s.exStairs?'':'(off)'} · ${fmt(gdStairKcal(d))} kcal</label>
+    <div class="fitem"><span>${habitCount('stairs',d)} flights<div class="muted" style="font-size:11px">about ${r1(1.5*gdWeight()/70)} kcal per flight on top of the steps it takes</div></span><b>${fmt(gdStairKcal(d))} kcal</b></div>
     <label>Other activity · ${fmt(man)} kcal</label>
     <div class="row" style="gap:6px"><input type="number" inputmode="numeric" min="0" id="gdExMan" value="${man||''}" placeholder="0"><button class="btn sm primary" onclick="gdDayW('${d}').exKcal=Math.max(0,Number(document.getElementById('gdExMan').value)||0);save();closeModal();render()">Save</button></div>
     <div class="muted" style="font-size:11px;margin-top:10px">Workout calories are estimates from the exercise, weight or intensity, amount and your body weight (${gdWeight()}kg${G.settings.profile.weight>30?'':', default until you set it in Food → Settings'}). Log a workout in Train or type it into Other activity, not both.</div>
